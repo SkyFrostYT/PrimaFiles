@@ -152,6 +152,11 @@ Avec un certificat de signature de code (commercial ou d'entreprise) : `.\Publie
 | `Themes/` | Palettes claire / sombre, styles, logos vectoriels |
 | `Assets/` | Icône de l'application |
 
+## Sécurité : audit et renforcement
+
+L'audit de sécurité de PrimaFiles (recherche des failles, tests d'attaque et corrections de la version 1.3) a été
+réalisé avec l'aide de **Claude** (Anthropic), utilisé comme assistant en cybersécurité.
+
 ## Licence
 
 [MIT](LICENSE) © 2026 Primatoria
