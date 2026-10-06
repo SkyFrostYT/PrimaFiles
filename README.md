@@ -3,6 +3,82 @@
 Analyse de l'occupation d'un disque local ou d'un partage réseau (`\\serveur\partage`), en WPF/.NET 10.
 **Lecture seule** : PrimaFiles ne supprime, ne déplace et ne modifie jamais aucun fichier.
 
+## Installation
+
+1. Téléchargez **`Installer.ps1`** depuis la [dernière version](https://github.com/SkyFrostYT/PrimaFiles/releases/latest).
+2. Ouvrez PowerShell dans le dossier du téléchargement et lancez :
+
+   ```powershell
+   powershell -ExecutionPolicy Bypass -File .\Installer.ps1
+   ```
+
+3. Acceptez l'invite administrateur (UAC). PrimaFiles est ensuite disponible dans le **menu Démarrer**.
+
+L'installateur :
+
+- installe PrimaFiles dans **`C:\Program Files\PrimaFiles`** (dossier protégé : modifiable uniquement par un administrateur) ;
+- télécharge la dernière version depuis GitHub et **vérifie son empreinte SHA-256** avant de l'installer
+  (si `PrimaFiles.exe` et `SHA256SUMS.txt` sont à côté du script, ce sont eux qui sont utilisés) ;
+- choisit la version standard si le runtime .NET 10 Desktop est présent, sinon la version portable (forcer : `-Portable`) ;
+- retire la marque « téléchargé depuis Internet » : **plus d'alerte SmartScreen au lancement** ;
+- ajoute PrimaFiles dans *Paramètres > Applications installées*, d'où il se désinstalle normalement.
+
+Désinstallation manuelle :
+
+```powershell
+powershell -ExecutionPolicy Bypass -File "C:\Program Files\PrimaFiles\Installer.ps1" -Desinstaller
+```
+
+Sans installation : téléchargez `PrimaFiles.exe` (ou le zip portable) et lancez-le directement.
+
+## Éviter l'alerte de Windows (« Windows a protégé votre ordinateur »)
+
+PrimaFiles n'est pas signé par un certificat commercial : un fichier téléchargé déclenche l'avertissement SmartScreen
+au premier lancement. Trois solutions, de la plus simple à la plus complète :
+
+**1. Passer l'alerte une fois** : « Informations complémentaires » → « Exécuter quand même ».
+
+**2. Débloquer le fichier téléchargé** (c'est la marque « provient d'Internet » qui déclenche l'alerte) :
+
+```powershell
+Unblock-File -Path "$env:USERPROFILE\Downloads\PrimaFiles.exe"
+```
+
+**3. Auto-signer le programme sur votre PC** : Windows affiche alors un éditeur identifié (« PrimaFiles (auto-signé
+sur ce PC) ») au lieu d'« Éditeur inconnu », et les stratégies qui n'autorisent que les programmes signés l'acceptent.
+
+- Avec l'installateur (recommandé) :
+
+  ```powershell
+  powershell -ExecutionPolicy Bypass -File .\Installer.ps1 -AutoSigner
+  ```
+
+- Ou manuellement, sur un `PrimaFiles.exe` déjà copié dans un dossier protégé (PowerShell **administrateur**) :
+
+  ```powershell
+  $exe  = "C:\Program Files\PrimaFiles\PrimaFiles.exe"
+  $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=PrimaFiles (auto-signé sur ce PC)" `
+          -CertStoreLocation Cert:\LocalMachine\My -KeyAlgorithm RSA -KeyLength 3072 -KeyExportPolicy NonExportable `
+          -NotAfter (Get-Date).AddYears(10)
+  $cer  = "$env:TEMP\PrimaFiles.cer"
+  Export-Certificate -Cert $cert -FilePath $cer | Out-Null
+  Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+  Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
+  Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -HashAlgorithm SHA256
+  Remove-Item "Cert:\LocalMachine\My\$($cert.Thumbprint)" -DeleteKey   # destruction de la clé privée
+  Remove-Item $cer
+  ```
+
+> [!IMPORTANT]
+> - L'auto-signature n'est reconnue **que sur le PC où elle a été faite**. Pour une signature reconnue partout, il faut
+>   un certificat commercial (DigiCert, Sectigo, Microsoft Artifact Signing…) ou un certificat d'entreprise déployé par GPO.
+> - La **clé privée est détruite** juste après la signature : le certificat approuvé ne peut servir à signer aucun autre
+>   programme, même si le PC est compromis plus tard.
+> - Après une mise à jour, relancez l'installateur avec `-AutoSigner` (une signature ne couvre qu'une version précise).
+> - Si **Smart App Control** est activé (Windows 11), il peut bloquer un programme auto-signé : il faut alors le désactiver
+>   ou attendre que PrimaFiles soit reconnu par Microsoft.
+> - La désinstallation retire aussi le certificat.
+
 ## Fonctionnalités
 
 - **Interface moderne** : barre de titre personnalisée (réduire / agrandir / fermer, coins arrondis Windows 11), accueil avec les lecteurs disponibles, indicateurs mis à jour en direct pendant l'analyse.
@@ -44,7 +120,7 @@ Analyse de l'occupation d'un disque local ou d'un partage réseau (`\\serveur\pa
 - Nouveaux indices : nom piégé, programme marqué « fichier système » hors de Windows, raccourcis à double extension (`facture.pdf.lnk`), consoles `.msc`, compléments Excel `.xll`, aide `.chm`.
 - Un fichier suspect n'affiche plus jamais le logo Windows ni le triangle « à ne pas supprimer ».
 
-## Publication
+## Compiler et publier (développeurs)
 
 ```powershell
 .\Publier.ps1
@@ -59,19 +135,8 @@ Produit dans `publish\` :
 - `portable\` : `PrimaFiles.exe` + quelques DLL natives WPF, fonctionne sans rien installer (copier le dossier entier).
 - `SHA256SUMS.txt` : empreintes pour vérifier l'intégrité des fichiers distribués.
 
-### Signature (recommandée pour les antivirus et SmartScreen)
-
-Un exécutable non signé peut afficher « Éditeur inconnu » (SmartScreen) et être traité avec méfiance par certains antivirus.
-La seule solution durable est de le **signer avec un certificat de signature de code** :
-
-- certificat d'entreprise (autorité interne déployée par GPO), ou certificat public OV/EV (DigiCert, Sectigo…) ;
-- puis : `.\Publier.ps1 -Thumbprint <empreinte du certificat>` (signature SHA-256 horodatée).
-
-Les exécutables publiés ici ne sont **pas signés** : au premier lancement, SmartScreen peut afficher « Windows a protégé
-votre ordinateur » → « Informations complémentaires » → « Exécuter quand même ». Les empreintes de `SHA256SUMS.txt`
-permettent de vérifier que le fichier téléchargé est intact. Vous pouvez aussi compiler vous-même à partir des sources.
-
-En complément, l'exécutable peut être soumis à Microsoft pour analyse (portail « Submit a file for malware analysis » de Microsoft Defender) afin d'accélérer sa réputation.
+Avec un certificat de signature de code (commercial ou d'entreprise) : `.\Publier.ps1 -Thumbprint <empreinte>`
+(signature SHA-256 horodatée). `Installer.ps1` est à joindre à chaque publication GitHub, avec `SHA256SUMS.txt`.
 
 ## Structure
 
