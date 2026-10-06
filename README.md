@@ -2,6 +2,7 @@
 
 Analyse de l'occupation d'un disque local ou d'un partage réseau (`\\serveur\partage`), en WPF/.NET 10.
 **Lecture seule** : PrimaFiles ne supprime, ne déplace et ne modifie jamais aucun fichier.
+Utilisation de Claude Code (Anthropic) comme assistant en cybersécurité pour l'aspect sécurisation.
 
 ## Installation
 
