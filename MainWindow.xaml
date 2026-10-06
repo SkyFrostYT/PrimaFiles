@@ -1,0 +1,906 @@
+<Window x:Class="StorageScanner.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:ui="clr-namespace:StorageScanner.UI"
+        Title="PrimaFiles"
+        Icon="Assets/PrimaFiles.ico"
+        Width="1440" Height="920" MinWidth="900" MinHeight="600"
+        WindowStartupLocation="CenterScreen"
+        Background="{DynamicResource WindowBg}"
+        Foreground="{DynamicResource TextBr}"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
+        UseLayoutRounding="True">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
+
+    <Window.Resources>
+        <!-- Badges de sécurité : logo Windows = élément système, triangle = ne pas supprimer -->
+        <DataTemplate x:Key="SafetyBadges">
+            <StackPanel Orientation="Horizontal" VerticalAlignment="Center" Background="Transparent" ToolTip="{Binding SafetyText}">
+                <!-- Fichier potentiellement malveillant : bouclier rouge (suspect) ou orange (à vérifier) -->
+                <Image Source="{StaticResource ThreatShield}" Width="16" Height="16" Margin="8,0,0,0" VerticalAlignment="Center"
+                       ToolTip="{Binding SuspicionText}" ToolTipService.InitialShowDelay="150"
+                       Visibility="{Binding IsSuspectDanger, Converter={StaticResource BoolToVis}}" />
+                <Image Source="{StaticResource WarnShield}" Width="15" Height="15" Margin="8,0,0,0" VerticalAlignment="Center"
+                       ToolTip="{Binding SuspicionText}" ToolTipService.InitialShowDelay="150"
+                       Visibility="{Binding IsSuspectWarning, Converter={StaticResource BoolToVis}}" />
+                <Image Source="{StaticResource WindowsLogo}" Width="13" Height="13" Margin="8,0,0,0" VerticalAlignment="Center"
+                       RenderOptions.BitmapScalingMode="HighQuality"
+                       Visibility="{Binding IsSystem, Converter={StaticResource BoolToVis}}" />
+                <TextBlock Style="{StaticResource Icon}" Text="&#xE7BA;" FontSize="13" Margin="6,0,0,0" Foreground="{DynamicResource WarningBr}"
+                           Visibility="{Binding IsCritical, Converter={StaticResource BoolToVis}}" />
+            </StackPanel>
+        </DataTemplate>
+        <DataTemplate x:Key="NameWithBadges">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis" />
+                <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource SafetyBadges}" />
+            </StackPanel>
+        </DataTemplate>
+
+        <ContextMenu x:Key="FolderMenu" x:Shared="False">
+            <MenuItem Header="Ouvrir dans l'Explorateur" Click="OpenInExplorer_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
+            </MenuItem>
+            <Separator />
+            <MenuItem Header="Centrer la carte sur ce dossier" Click="ZoomTreemapHere_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xF0E2;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Analyser uniquement ce dossier" Click="ScanHere_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE768;" /></MenuItem.Icon>
+            </MenuItem>
+        </ContextMenu>
+        <ContextMenu x:Key="FileMenu" x:Shared="False">
+            <MenuItem Header="Afficher dans l'Explorateur" Click="OpenInExplorer_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Afficher dans l'arborescence" Click="ShowInTree_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" /></MenuItem.Icon>
+            </MenuItem>
+            <Separator />
+            <MenuItem Header="Vérifier avec l'antivirus" Click="CheckWithAv_Click">
+                <MenuItem.Icon><Image Source="{StaticResource ThreatShield}" Width="15" Height="15" /></MenuItem.Icon>
+            </MenuItem>
+        </ContextMenu>
+        <ContextMenu x:Key="SimpleMenu" x:Shared="False">
+            <MenuItem Header="Afficher dans l'Explorateur" Click="OpenInExplorer_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
+            </MenuItem>
+            <Separator />
+            <MenuItem Header="Vérifier avec l'antivirus" Click="CheckWithAv_Click">
+                <MenuItem.Icon><Image Source="{StaticResource ThreatShield}" Width="15" Height="15" /></MenuItem.Icon>
+            </MenuItem>
+        </ContextMenu>
+
+        <Style x:Key="KpiValue" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="19" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Margin" Value="0,1,0,0" />
+        </Style>
+        <Style x:Key="KpiLabel" TargetType="TextBlock" BasedOn="{StaticResource Subtle}">
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style x:Key="KpiIcon" TargetType="Border">
+            <Setter Property="Width" Value="38" />
+            <Setter Property="Height" Value="38" />
+            <Setter Property="CornerRadius" Value="9" />
+            <Setter Property="Margin" Value="0,0,12,0" />
+        </Style>
+        <Style x:Key="TabIcon" TargetType="TextBlock" BasedOn="{StaticResource Icon}">
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="Margin" Value="0,0,8,0" />
+        </Style>
+    </Window.Resources>
+
+    <Border x:Name="RootBorder" Background="{DynamicResource WindowBg}">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="40" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <!-- Proportions plutôt que hauteurs fixes : tout suit la taille de la fenêtre -->
+                <RowDefinition Height="3*" MinHeight="220" />
+                <RowDefinition x:Name="SplitterRow" Height="Auto" />
+                <RowDefinition x:Name="TreemapRow" Height="2*" MinHeight="0" />
+                <RowDefinition Height="32" />
+            </Grid.RowDefinitions>
+
+            <!-- ============ Barre de titre ============ -->
+            <Grid Grid.Row="0">
+                <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+                    <Image Source="{StaticResource AppLogo}" Width="22" Height="22" RenderOptions.BitmapScalingMode="HighQuality" />
+                    <TextBlock Text="PrimaFiles" FontWeight="SemiBold" FontSize="13.5" Margin="10,0,0,0" VerticalAlignment="Center" />
+                    <TextBlock Text="{Binding ScanTarget}" Style="{StaticResource Subtle}" Margin="12,0,0,0" MaxWidth="700" TextTrimming="CharacterEllipsis" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top">
+                    <!-- Mode administrateur : bouton de relance, ou badge si déjà élevé -->
+                    <Button Style="{StaticResource TitleTextButton}" Command="{Binding RestartAsAdminCommand}"
+                            Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVis}}"
+                            ToolTip="Relancer en administrateur pour analyser aussi les dossiers protégés (invite UAC)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" FontSize="13" Foreground="{DynamicResource WarningBr}" Margin="0,0,7,0" />
+                            <TextBlock Text="Mode administrateur" FontSize="12" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
+                    <Border Background="{DynamicResource AdminBadgeBg}" CornerRadius="5" Padding="9,3" Margin="0,0,8,0" VerticalAlignment="Center"
+                            Visibility="{Binding IsElevated, Converter={StaticResource BoolToVis}}"
+                            ToolTip="L'application tourne avec les droits administrateur. Attention : les lecteurs réseau mappés peuvent ne pas être visibles dans ce mode.">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" FontSize="12" Foreground="{DynamicResource WarningBr}" Margin="0,0,6,0" />
+                            <TextBlock Text="Administrateur" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBr}" />
+                        </StackPanel>
+                    </Border>
+                    <Button Style="{StaticResource TitleBarButton}" Command="{Binding ToggleThemeCommand}" Content="{Binding ThemeGlyph}"
+                            FontSize="14" ToolTip="{Binding ThemeTooltip}" />
+                    <Rectangle Width="1" Height="16" Fill="{DynamicResource BorderBr}" Margin="4,0" VerticalAlignment="Center" />
+                    <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="Minimize_Click" ToolTip="Réduire" />
+                    <Button x:Name="MaxButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;" Click="Maximize_Click" ToolTip="Agrandir" />
+                    <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;" Click="Close_Click" ToolTip="Fermer" />
+                </StackPanel>
+            </Grid>
+
+            <!-- ============ Barre de commande ============ -->
+            <Border Grid.Row="1" Style="{StaticResource Card}" Margin="16,2,16,0" Padding="10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <Grid>
+                        <TextBox x:Name="PathBox" Text="{Binding RootPath, UpdateSourceTrigger=PropertyChanged}" Padding="34,0,40,0" FontSize="13.5"
+                                 Tag="Dossier local ou chemin réseau — ex.  D:\Données   ·   \\serveur\partage\dossier   ·   \\serveur (tous ses partages)"
+                                 KeyDown="PathBox_KeyDown" />
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" Foreground="{DynamicResource SubtleTextBr}"
+                                   Margin="12,0,0,0" HorizontalAlignment="Left" IsHitTestVisible="False" />
+                        <ToggleButton x:Name="HistoryToggle" Style="{StaticResource IconToggle}" HorizontalAlignment="Right" Margin="0,0,3,0"
+                                      Height="28" MinWidth="30" Padding="6,0" BorderThickness="0" Background="Transparent"
+                                      ToolTip="Analyses récentes"
+                                      IsHitTestVisible="{Binding IsOpen, ElementName=HistoryPopup, Converter={StaticResource Not}}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" FontSize="13" />
+                        </ToggleButton>
+                        <Popup x:Name="HistoryPopup" PlacementTarget="{Binding ElementName=PathBox}" Placement="Bottom" VerticalOffset="4"
+                               StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"
+                               IsOpen="{Binding IsChecked, ElementName=HistoryToggle}">
+                            <Border Style="{StaticResource Card}" Padding="4" Margin="0,0,12,12" Width="{Binding ActualWidth, ElementName=PathBox}">
+                                <Border.Effect>
+                                    <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.16" />
+                                </Border.Effect>
+                                <StackPanel>
+                                    <TextBlock Text="ANALYSES RÉCENTES" Style="{StaticResource Subtle}" FontSize="10.5" FontWeight="SemiBold" Margin="10,6,0,4" />
+                                    <ListBox x:Name="HistoryList" ItemsSource="{Binding RecentPaths}" BorderThickness="0" Background="Transparent"
+                                             ItemContainerStyle="{StaticResource HistoryItem}" MaxHeight="320"
+                                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                             SelectionChanged="History_SelectionChanged">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <DockPanel>
+                                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" FontSize="12" Foreground="{DynamicResource FaintTextBr}" Margin="0,0,10,0" />
+                                                    <TextBlock Text="{Binding}" TextTrimming="CharacterEllipsis" />
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                </StackPanel>
+                            </Border>
+                        </Popup>
+                    </Grid>
+
+                    <Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding BrowseCommand}" ToolTip="Choisir un dossier">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE838;" Margin="0,0,8,0" />
+                            <TextBlock Text="Parcourir" />
+                        </StackPanel>
+                    </Button>
+
+                    <Button Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource AccentButton}" Command="{Binding ScanCommand}" MinWidth="120"
+                            Visibility="{Binding IsScanning, Converter={StaticResource InverseBoolToVis}}" ToolTip="Lancer l'analyse (Entrée)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE768;" FontSize="12" Margin="0,0,8,0" />
+                            <TextBlock Text="Analyser" />
+                        </StackPanel>
+                    </Button>
+                    <Button Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource DangerButton}" Command="{Binding CancelCommand}" MinWidth="120"
+                            Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE71A;" FontSize="12" Margin="0,0,8,0" />
+                            <TextBlock Text="Arrêter" />
+                        </StackPanel>
+                    </Button>
+
+                    <Rectangle Grid.Column="3" Width="1" Fill="{DynamicResource BorderBr}" Margin="14,4" />
+
+                    <Button Grid.Column="4" Command="{Binding ExportCommand}" Margin="0" ToolTip="Exporter l'onglet affiché au format CSV (Excel)">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xEDE1;" Margin="0,0,8,0" />
+                            <TextBlock Text="Exporter" />
+                        </StackPanel>
+                    </Button>
+
+                    <ToggleButton x:Name="TreemapToggle" Grid.Column="5" Style="{StaticResource IconToggle}" Margin="8,0,0,0" IsChecked="True"
+                                  ToolTip="Afficher / masquer la carte des volumes" Checked="TreemapToggle_Changed" Unchecked="TreemapToggle_Changed">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xF0E2;" />
+                    </ToggleButton>
+
+                    <ToggleButton x:Name="OptionsToggle" Grid.Column="6" Style="{StaticResource IconToggle}" Margin="8,0,0,0" ToolTip="Paramètres"
+                                  IsHitTestVisible="{Binding IsOpen, ElementName=OptionsPopup, Converter={StaticResource Not}}">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE713;" />
+                    </ToggleButton>
+                    <Popup x:Name="OptionsPopup" PlacementTarget="{Binding ElementName=OptionsToggle}" Placement="Bottom" VerticalOffset="6"
+                           HorizontalOffset="-300" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"
+                           IsOpen="{Binding IsChecked, ElementName=OptionsToggle}">
+                        <Border Style="{StaticResource Card}" Padding="18,16" Margin="0,0,12,12" Width="340">
+                            <Border.Effect>
+                                <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.16" />
+                            </Border.Effect>
+                            <StackPanel>
+                                <TextBlock Text="Paramètres d'analyse" Style="{StaticResource SectionTitle}" Margin="0,0,0,14" />
+
+                                <DockPanel>
+                                    <TextBox DockPanel.Dock="Right" Width="70" Height="30" Text="{Binding Threads}" HorizontalContentAlignment="Right" />
+                                    <TextBlock Text="Threads d'analyse" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <TextBlock Text="Réseau : 16 à 32 · disque local : 8 à 16" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,4,0,14" />
+
+                                <DockPanel>
+                                    <TextBox DockPanel.Dock="Right" Width="70" Height="30" Text="{Binding DupMinSizeMb}" HorizontalContentAlignment="Right" />
+                                    <TextBlock Text="Doublons : taille min. (Mo)" VerticalAlignment="Center" />
+                                </DockPanel>
+                                <TextBlock Text="Fichiers retenus pour la comparaison, appliqué à la prochaine analyse" Style="{StaticResource Subtle}"
+                                           FontSize="11.5" Margin="0,4,0,14" TextWrapping="Wrap" />
+
+                                <DockPanel>
+                                    <TextBox DockPanel.Dock="Right" Width="70" Height="30" Text="{Binding DupThreads}" HorizontalContentAlignment="Right" />
+                                    <TextBlock Text="Doublons : lectures parallèles" VerticalAlignment="Center" />
+                                </DockPanel>
+                            </StackPanel>
+                        </Border>
+                    </Popup>
+
+                    <Button Grid.Column="7" Margin="8,0,0,0" Command="{Binding NewScanCommand}" ToolTip="Revenir à l'accueil">
+                        <TextBlock Style="{StaticResource Icon}" Text="&#xE80F;" />
+                    </Button>
+                </Grid>
+            </Border>
+
+            <!-- ============ Indicateurs ============ -->
+            <UniformGrid Grid.Row="2" Columns="6" Margin="10,12,10,0"
+                         Visibility="{Binding ShowWelcome, Converter={StaticResource InverseBoolToVis}}">
+                <Border Style="{StaticResource Card}" Margin="6,0" Padding="14,12">
+                    <DockPanel>
+                        <Border Style="{DynamicResource KpiIcon}" Background="{DynamicResource KpiBlueBg}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xEDA2;" Foreground="{DynamicResource KpiBlueFg}" FontSize="17" HorizontalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Espace occupé" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{Binding KpiSize}" Style="{DynamicResource KpiValue}" />
+                            <TextBlock Text="{Binding KpiSizeSub}" Style="{DynamicResource KpiLabel}" FontSize="11" TextTrimming="CharacterEllipsis" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="6,0" Padding="14,12">
+                    <DockPanel>
+                        <Border Style="{DynamicResource KpiIcon}" Background="{DynamicResource KpiGreenBg}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE7C3;" Foreground="{DynamicResource KpiGreenFg}" FontSize="17" HorizontalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Fichiers" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{Binding KpiFiles}" Style="{DynamicResource KpiValue}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="6,0" Padding="14,12">
+                    <DockPanel>
+                        <Border Style="{DynamicResource KpiIcon}" Background="{DynamicResource KpiAmberBg}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" Foreground="{DynamicResource KpiAmberFg}" FontSize="17" HorizontalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Dossiers" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{Binding KpiDirs}" Style="{DynamicResource KpiValue}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="6,0" Padding="14,12">
+                    <DockPanel>
+                        <Border Style="{DynamicResource KpiIcon}" Background="{DynamicResource KpiPurpleBg}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE916;" Foreground="{DynamicResource KpiPurpleFg}" FontSize="17" HorizontalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Durée de l'analyse" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{Binding KpiDuration}" Style="{DynamicResource KpiValue}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <Border Style="{StaticResource Card}" Margin="6,0" Padding="14,12">
+                    <DockPanel>
+                        <Border Style="{DynamicResource KpiIcon}" Background="{DynamicResource KpiRedBg}">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xED1A;" Foreground="{DynamicResource KpiRedFg}" FontSize="17" HorizontalAlignment="Center" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Dossiers inaccessibles" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{Binding KpiErrors}" Style="{DynamicResource KpiValue}" />
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+                <!-- Fichiers suspects : cliquable, ouvre l'onglet Suspects -->
+                <Border Style="{StaticResource Card}" Margin="6,0" Padding="14,12" Cursor="Hand" MouseLeftButtonUp="SuspectsKpi_Click"
+                        ToolTip="Fichiers présentant des signes de logiciel malveillant — cliquer pour les voir">
+                    <DockPanel>
+                        <Border Style="{DynamicResource KpiIcon}" Background="{DynamicResource KpiRedBg}">
+                            <Image Source="{StaticResource ThreatShield}" Width="20" Height="20" />
+                        </Border>
+                        <StackPanel VerticalAlignment="Center">
+                            <TextBlock Text="Fichiers suspects" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{Binding KpiSuspects}">
+                                <TextBlock.Style>
+                                    <Style TargetType="TextBlock" BasedOn="{StaticResource KpiValue}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding HasSuspects}" Value="True">
+                                                <Setter Property="Foreground" Value="{DynamicResource DangerBr}" />
+                                            </DataTrigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </TextBlock.Style>
+                            </TextBlock>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+            </UniformGrid>
+
+            <!-- ============ Contenu principal ============ -->
+            <Border Grid.Row="3" Style="{StaticResource Card}" Margin="16,12,16,0">
+                <Grid>
+                    <!-- Accueil -->
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" Visibility="{Binding ShowWelcome, Converter={StaticResource BoolToVis}}">
+                        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24,36" MaxWidth="1000">
+                            <Image Source="{StaticResource AppLogo}" Width="76" Height="76" HorizontalAlignment="Center" RenderOptions.BitmapScalingMode="HighQuality">
+                                <Image.Effect>
+                                    <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.25" Color="#2563EB" />
+                                </Image.Effect>
+                            </Image>
+                            <TextBlock Text="PrimaFiles" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentBr}" HorizontalAlignment="Center" Margin="0,14,0,0" />
+                            <TextBlock Text="Où est passé votre espace disque ?" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,20,0,8" />
+                            <TextBlock Text="Saisissez un dossier ou un partage réseau ci-dessus, ou choisissez directement un lecteur :"
+                                       Style="{StaticResource Subtle}" FontSize="14" HorizontalAlignment="Center" />
+
+                            <ItemsControl ItemsSource="{Binding Drives}" Margin="0,26,0,0" HorizontalAlignment="Center">
+                                <ItemsControl.ItemsPanel>
+                                    <ItemsPanelTemplate>
+                                        <WrapPanel HorizontalAlignment="Center" />
+                                    </ItemsPanelTemplate>
+                                </ItemsControl.ItemsPanel>
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Button Style="{StaticResource TileButton}" Width="260" Margin="7"
+                                                Command="{Binding DataContext.ScanPathCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding Root}" ToolTip="{Binding ToolTip}">
+                                            <StackPanel>
+                                                <DockPanel>
+                                                    <TextBlock Style="{StaticResource Icon}" Text="{Binding Icon}" FontSize="20" Foreground="{DynamicResource AccentBr}" Margin="0,0,12,0" />
+                                                    <StackPanel VerticalAlignment="Center">
+                                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="14" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Text="{Binding Kind}" FontSize="11.5" Foreground="{DynamicResource SubtleTextBr}" />
+                                                    </StackPanel>
+                                                </DockPanel>
+                                                <ProgressBar Value="{Binding UsedPercent, Mode=OneWay}" Maximum="100" Margin="0,12,0,8"
+                                                             Foreground="{Binding UsedPercent, Converter={StaticResource PercentBrush}, ConverterParameter=disk}" />
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding UsedText}" FontSize="12" FontWeight="SemiBold"
+                                                               Foreground="{Binding UsedPercent, Converter={StaticResource PercentBrush}, ConverterParameter=disk}" />
+                                                    <TextBlock Text="{Binding Detail}" Style="{StaticResource Subtle}" FontSize="12" />
+                                                </DockPanel>
+                                            </StackPanel>
+                                        </Button>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+
+                            <TextBlock Style="{StaticResource Subtle}" FontSize="12" HorizontalAlignment="Center" Margin="0,26,0,0" TextWrapping="Wrap" TextAlignment="Center">
+                                Astuce : pour un partage réseau volumineux, augmentez le nombre de threads dans les paramètres
+                                <Run FontFamily="{StaticResource IconFont}" Text="&#xE713;" /> pour accélérer l'analyse.
+                            </TextBlock>
+                        </StackPanel>
+                    </ScrollViewer>
+
+                    <!-- Analyse en cours -->
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="600"
+                                Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}">
+                        <TextBlock Text="Analyse en cours…" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding ScanTarget}" Style="{StaticResource Subtle}" FontSize="14" HorizontalAlignment="Center"
+                                   Margin="0,6,0,22" TextTrimming="CharacterEllipsis" />
+                        <ProgressBar IsIndeterminate="{Binding IsScanning}" Height="6" />
+                        <TextBlock Text="{Binding CurrentPath}" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,14,0,0"
+                                   TextTrimming="CharacterEllipsis" HorizontalAlignment="Center" />
+                        <TextBlock Text="{Binding ProgressText}" Style="{StaticResource Subtle}" FontSize="12" Margin="0,4,0,0" HorizontalAlignment="Center" />
+                        <Button Style="{StaticResource DangerButton}" Command="{Binding CancelCommand}" HorizontalAlignment="Center" Margin="0,22,0,0">
+                            <StackPanel Orientation="Horizontal">
+                                <TextBlock Style="{StaticResource Icon}" Text="&#xE71A;" FontSize="12" Margin="0,0,8,0" />
+                                <TextBlock Text="Arrêter l'analyse" />
+                            </StackPanel>
+                        </Button>
+                    </StackPanel>
+
+                    <!-- Résultats -->
+                    <TabControl SelectedIndex="{Binding SelectedTabIndex}" Visibility="{Binding ShowResults, Converter={StaticResource BoolToVis}}">
+
+                        <!-- 0 : Arborescence -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource TabIcon}" Text="&#xE8B7;" />
+                                    <TextBlock Text="Arborescence" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="7*" MinWidth="420" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="3*" MinWidth="240" />
+                                </Grid.ColumnDefinitions>
+
+                                <DockPanel>
+                                    <Grid DockPanel.Dock="Top" Margin="14,10,14,6">
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="Trier par" Style="{StaticResource Subtle}" Margin="0,0,10,0" />
+                                            <Border Background="{DynamicResource SegmentBg}" CornerRadius="7" Padding="1">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <RadioButton Style="{StaticResource Segment}" Content="Nom (ordre Windows)"
+                                                                 IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=0}" />
+                                                    <RadioButton Style="{StaticResource Segment}" Content="Taille"
+                                                                 IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=1}" />
+                                                    <RadioButton Style="{StaticResource Segment}" Content="Fichiers"
+                                                                 IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=2}" />
+                                                    <RadioButton Style="{StaticResource Segment}" Content="Date"
+                                                                 IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=3}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </StackPanel>
+                                        <TextBlock HorizontalAlignment="Right" Style="{StaticResource Subtle}" FontSize="11.5" Foreground="{DynamicResource FaintTextBr}"
+                                                   Text="Double-clic ou ← → pour déplier · clic droit pour plus d'actions" />
+                                    </Grid>
+
+                                    <DataGrid x:Name="TreeGrid"
+                                              ItemsSource="{Binding Tree.Rows}"
+                                              SelectedItem="{Binding SelectedTreeRow}"
+                                              ContextMenu="{StaticResource FolderMenu}"
+                                              Sorting="TreeGrid_Sorting"
+                                              MouseDoubleClick="TreeGrid_MouseDoubleClick"
+                                              PreviewKeyDown="TreeGrid_PreviewKeyDown">
+                                        <DataGrid.RowStyle>
+                                            <Style TargetType="DataGridRow" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                                                <Style.Triggers>
+                                                    <!-- Mise en évidence après un clic sur la carte des volumes -->
+                                                    <DataTrigger Binding="{Binding IsFlashing}" Value="True">
+                                                        <Setter Property="Background" Value="{DynamicResource RowFlashBr}" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </DataGrid.RowStyle>
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Header="Nom" Width="*" MinWidth="240" SortMemberPath="Name">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <StackPanel Orientation="Horizontal" Margin="{Binding Indent}" ToolTip="{Binding ToolTip}">
+                                                            <Button Style="{StaticResource ExpanderButton}" Content="{Binding ExpanderGlyph}" Click="Expander_Click" />
+                                                            <TextBlock FontFamily="{StaticResource IconFont}" FontSize="15" Text="{Binding Icon}" Foreground="{Binding IconBrush}"
+                                                                       VerticalAlignment="Center" Margin="4,0,8,0" />
+                                                            <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                                            <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource SafetyBadges}" />
+                                                        </StackPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Header="Taille" Width="90" SortMemberPath="Size" FontWeight="SemiBold"
+                                                                Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                            <DataGridTemplateColumn Header="% du parent" Width="160" SortMemberPath="Size">
+                                                <DataGridTemplateColumn.CellTemplate>
+                                                    <DataTemplate>
+                                                        <DockPanel>
+                                                            <TextBlock DockPanel.Dock="Right" Text="{Binding PercentText}" Width="48" TextAlignment="Right"
+                                                                       FontSize="11.5" Foreground="{DynamicResource SubtleTextBr}" VerticalAlignment="Center" />
+                                                            <ProgressBar Value="{Binding Percent, Mode=OneWay}" Maximum="100" VerticalAlignment="Center"
+                                                                         Foreground="{Binding PercentBrush}" />
+                                                        </DockPanel>
+                                                    </DataTemplate>
+                                                </DataGridTemplateColumn.CellTemplate>
+                                            </DataGridTemplateColumn>
+                                            <DataGridTextColumn Header="Fichiers" Width="90" SortMemberPath="Files"
+                                                                Binding="{Binding Files, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
+                                            <DataGridTextColumn Header="Dossiers" Width="85" SortMemberPath="Files"
+                                                                Binding="{Binding Dirs, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
+                                            <DataGridTextColumn Header="Modifié le" Width="130" SortMemberPath="ModifiedUtc"
+                                                                Binding="{Binding ModifiedUtc, Converter={StaticResource LocalDate}}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </DockPanel>
+
+                                <GridSplitter Grid.Column="1" Style="{StaticResource VSplitter}" />
+
+                                <DockPanel Grid.Column="2">
+                                    <StackPanel DockPanel.Dock="Top" Margin="14,12,14,8">
+                                        <DockPanel>
+                                            <TextBlock Style="{StaticResource Icon}" Text="&#xE7C3;" Foreground="{DynamicResource FilesIconBr}" Margin="0,0,8,0" />
+                                            <TextBlock Text="{Binding FolderFilesTitle}" Style="{StaticResource SectionTitle}" TextTrimming="CharacterEllipsis" />
+                                        </DockPanel>
+                                        <TextBlock Text="{Binding FolderFilesHeader}" Style="{StaticResource Subtle}" FontSize="12" Margin="0,3,0,0" TextTrimming="CharacterEllipsis" />
+                                    </StackPanel>
+                                    <DataGrid ItemsSource="{Binding FolderFiles}" ContextMenu="{StaticResource SimpleMenu}">
+                                        <DataGrid.Columns>
+                                            <DataGridTemplateColumn Header="Nom" Width="*" SortMemberPath="Name" CellTemplate="{StaticResource NameWithBadges}" />
+                                            <DataGridTextColumn Header="Taille" Width="80" SortMemberPath="Size"
+                                                                Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                            <DataGridTextColumn Header="Modifié le" Width="138" SortMemberPath="LastWriteUtc"
+                                                                Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
+                                        </DataGrid.Columns>
+                                    </DataGrid>
+                                </DockPanel>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- 1 : Gros fichiers -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource TabIcon}" Text="&#xE7C3;" />
+                                    <TextBlock Text="Gros fichiers" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <DockPanel>
+                                <TextBlock DockPanel.Dock="Top" Text="{Binding TopFilesHeader}" Style="{StaticResource Subtle}" Margin="14,12,14,6" />
+                                <DataGrid ItemsSource="{Binding TopFiles}" ContextMenu="{StaticResource FileMenu}">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="Nom" Width="280" SortMemberPath="Name" CellTemplate="{StaticResource NameWithBadges}" />
+                                        <DataGridTextColumn Header="Taille" Width="95" SortMemberPath="Size" FontWeight="SemiBold"
+                                                            Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="Type" Width="75" Binding="{Binding Extension}" />
+                                        <DataGridTextColumn Header="Modifié le" Width="130" SortMemberPath="LastWriteUtc"
+                                                            Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
+                                        <DataGridTextColumn Header="Emplacement" Width="*" Binding="{Binding DirectoryPath}" Foreground="{DynamicResource SubtleTextBr}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </TabItem>
+
+                        <!-- 2 : Types de fichiers -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource TabIcon}" Text="&#xE8FD;" />
+                                    <TextBlock Text="Types de fichiers" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <DataGrid ItemsSource="{Binding Extensions}" Margin="0,6,0,0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Extension" Width="170" Binding="{Binding Extension}" FontWeight="SemiBold" />
+                                    <DataGridTextColumn Header="Fichiers" Width="100" SortMemberPath="Count"
+                                                        Binding="{Binding Count, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
+                                    <DataGridTextColumn Header="Taille" Width="100" SortMemberPath="Size"
+                                                        Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                    <DataGridTemplateColumn Header="Part du total" Width="280" SortMemberPath="Percent">
+                                        <DataGridTemplateColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <DockPanel>
+                                                    <TextBlock DockPanel.Dock="Right" Text="{Binding Percent, StringFormat={}{0:0.0} %}" Width="54" TextAlignment="Right"
+                                                               FontSize="11.5" Foreground="{DynamicResource SubtleTextBr}" VerticalAlignment="Center" />
+                                                    <ProgressBar Value="{Binding Percent, Mode=OneWay}" Maximum="100" VerticalAlignment="Center"
+                                                                 Foreground="{Binding Percent, Converter={StaticResource PercentBrush}}" />
+                                                </DockPanel>
+                                            </DataTemplate>
+                                        </DataGridTemplateColumn.CellTemplate>
+                                    </DataGridTemplateColumn>
+                                    <DataGridTextColumn Header="Taille moyenne" Width="120" SortMemberPath="AverageSize"
+                                                        Binding="{Binding AverageSize, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+
+                        <!-- 3 : Doublons -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource TabIcon}" Text="&#xE8C8;" />
+                                    <TextBlock Text="Doublons" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" MinHeight="100" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="*" MinHeight="80" />
+                                </Grid.RowDefinitions>
+
+                                <Grid Margin="14,12,14,10">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel Orientation="Horizontal">
+                                        <Button Style="{StaticResource AccentButton}" Command="{Binding FindDuplicatesCommand}" Margin="0"
+                                                Visibility="{Binding IsFindingDuplicates, Converter={StaticResource InverseBoolToVis}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE721;" FontSize="12" Margin="0,0,8,0" />
+                                                <TextBlock Text="Rechercher les doublons" />
+                                            </StackPanel>
+                                        </Button>
+                                        <Button Style="{StaticResource DangerButton}" Command="{Binding CancelDuplicatesCommand}" Margin="0"
+                                                Visibility="{Binding IsFindingDuplicates, Converter={StaticResource BoolToVis}}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE71A;" FontSize="12" Margin="0,0,8,0" />
+                                                <TextBlock Text="Annuler la recherche" />
+                                            </StackPanel>
+                                        </Button>
+                                    </StackPanel>
+                                    <StackPanel Grid.Column="1" Margin="18,0,0,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding DupStatus}" TextTrimming="CharacterEllipsis" />
+                                        <ProgressBar Value="{Binding DupPercent, Mode=OneWay}" Maximum="100" Height="4" Margin="0,6,0,0"
+                                                     Visibility="{Binding IsFindingDuplicates, Converter={StaticResource BoolToVis}}" />
+                                        <TextBlock Text="Comparaison par taille, puis empreinte partielle (début + fin), puis SHA-256 complet"
+                                                   Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,3,0,0"
+                                                   Visibility="{Binding IsFindingDuplicates, Converter={StaticResource InverseBoolToVis}}" />
+                                    </StackPanel>
+                                </Grid>
+
+                                <DataGrid Grid.Row="1" ItemsSource="{Binding Duplicates}" SelectedItem="{Binding SelectedDuplicate}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Fichier" Width="*" Binding="{Binding FirstName}" FontWeight="SemiBold" />
+                                        <DataGridTextColumn Header="Taille unitaire" Width="110" SortMemberPath="Size"
+                                                            Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="Copies" Width="80" SortMemberPath="Count"
+                                                            Binding="{Binding Count, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="Espace récupérable" Width="140" SortMemberPath="WastedSize" Foreground="{DynamicResource DangerBr}" FontWeight="SemiBold"
+                                                            Binding="{Binding WastedSize, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="Empreinte SHA-256" Width="160" Binding="{Binding ShortHash}" FontFamily="Consolas"
+                                                            Foreground="{DynamicResource SubtleTextBr}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+
+                                <GridSplitter Grid.Row="2" Style="{StaticResource HSplitter}" />
+
+                                <DataGrid Grid.Row="3" ItemsSource="{Binding SelectedDuplicate.Files}" ContextMenu="{StaticResource FileMenu}">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="Emplacements des copies" Width="*" SortMemberPath="FullPath">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <TextBlock Text="{Binding FullPath}" VerticalAlignment="Center" />
+                                                        <ContentPresenter Content="{Binding}" ContentTemplate="{StaticResource SafetyBadges}" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Modifié le" Width="140" SortMemberPath="LastWriteUtc"
+                                                            Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </TabItem>
+
+                        <!-- 4 : Fichiers suspects -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <Image Source="{StaticResource ThreatShield}" Width="14" Height="14" Margin="0,0,8,0" />
+                                    <TextBlock Text="{Binding SuspectsHeader}" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <DockPanel>
+                                <!-- Bandeau d'alerte -->
+                                <Border DockPanel.Dock="Top" Margin="14,12,14,8" CornerRadius="10" Padding="18,14"
+                                        Background="{DynamicResource DangerSoftBr}" BorderBrush="{DynamicResource DangerBr}" BorderThickness="1"
+                                        Visibility="{Binding HasSuspects, Converter={StaticResource BoolToVis}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <Image Source="{StaticResource DangerTriangle}" Width="54" Height="54" VerticalAlignment="Top" Margin="0,0,16,0" />
+                                        <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                                            <TextBlock Text="ATTENTION : FICHIERS POTENTIELLEMENT MALVEILLANTS" FontSize="16" FontWeight="Bold"
+                                                       Foreground="{DynamicResource DangerBr}" />
+                                            <TextBlock Text="{Binding SuspectsSummary}" TextWrapping="Wrap" Margin="0,5,0,0" />
+                                            <TextBlock Text="N'ouvrez pas ces fichiers. En cas de menace confirmée, prévenez votre service informatique."
+                                                       FontWeight="SemiBold" Margin="0,5,0,0" TextWrapping="Wrap" />
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="16,0,0,0">
+                                            <Button Style="{StaticResource DangerButton}" Command="{Binding CheckAllSuspectsCommand}" MinWidth="230"
+                                                    Visibility="{Binding IsAvChecking, Converter={StaticResource InverseBoolToVis}}">
+                                                <StackPanel Orientation="Horizontal">
+                                                    <Image Source="{StaticResource ThreatShield}" Width="15" Height="15" Margin="0,0,8,0" />
+                                                    <TextBlock Text="Tout vérifier avec l'antivirus" />
+                                                </StackPanel>
+                                            </Button>
+                                            <Button Command="{Binding CancelAvCommand}" MinWidth="230"
+                                                    Visibility="{Binding IsAvChecking, Converter={StaticResource BoolToVis}}" Content="Arrêter la vérification" />
+                                            <Button Command="{Binding CheckSuspectCommand}" MinWidth="230" Margin="0,6,0,0" Content="Vérifier le fichier sélectionné" />
+                                            <TextBlock Text="{Binding AvName}" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,6,0,0" HorizontalAlignment="Center" />
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+
+                                <!-- Aucun suspect -->
+                                <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,40,0,0"
+                                            Visibility="{Binding NoSuspects, Converter={StaticResource BoolToVis}}">
+                                    <Image Source="{StaticResource SafeShield}" Width="46" Height="46" Margin="0,0,14,0" />
+                                    <StackPanel VerticalAlignment="Center">
+                                        <TextBlock Text="Aucun fichier suspect détecté" FontSize="16" FontWeight="SemiBold" />
+                                        <TextBlock Text="Aucun des indices habituels de logiciel malveillant n'a été trouvé. Cela ne remplace pas votre antivirus."
+                                                   Style="{StaticResource Subtle}" Margin="0,3,0,0" />
+                                    </StackPanel>
+                                </StackPanel>
+
+                                <DataGrid ItemsSource="{Binding Suspects}" SelectedItem="{Binding SelectedSuspect}" ContextMenu="{StaticResource FileMenu}"
+                                          Visibility="{Binding HasSuspects, Converter={StaticResource BoolToVis}}" RowHeight="32">
+                                    <DataGrid.Columns>
+                                        <DataGridTemplateColumn Header="Niveau" Width="120" SortMemberPath="IsDanger">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <StackPanel Orientation="Horizontal">
+                                                        <Image Width="18" Height="18" Margin="0,0,8,0">
+                                                            <Image.Style>
+                                                                <Style TargetType="Image">
+                                                                    <Setter Property="Source" Value="{StaticResource WarnShield}" />
+                                                                    <Style.Triggers>
+                                                                        <DataTrigger Binding="{Binding IsDanger}" Value="True">
+                                                                            <Setter Property="Source" Value="{StaticResource ThreatShield}" />
+                                                                        </DataTrigger>
+                                                                    </Style.Triggers>
+                                                                </Style>
+                                                            </Image.Style>
+                                                        </Image>
+                                                        <TextBlock Text="{Binding LevelText}" FontWeight="SemiBold" VerticalAlignment="Center" />
+                                                    </StackPanel>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Fichier" Width="220" Binding="{Binding Name}" FontWeight="SemiBold" />
+                                        <DataGridTemplateColumn Header="Pourquoi ?" Width="*" SortMemberPath="ReasonsText">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding ReasonsText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ReasonsText}" VerticalAlignment="Center" />
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTemplateColumn Header="Antivirus" Width="200" SortMemberPath="AvText">
+                                            <DataGridTemplateColumn.CellTemplate>
+                                                <DataTemplate>
+                                                    <TextBlock Text="{Binding AvText}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                                                        <TextBlock.Style>
+                                                            <Style TargetType="TextBlock">
+                                                                <Setter Property="Foreground" Value="{Binding AvBrush}" />
+                                                                <Style.Triggers>
+                                                                    <DataTrigger Binding="{Binding AvBrush}" Value="{x:Null}">
+                                                                        <Setter Property="Foreground" Value="{DynamicResource SubtleTextBr}" />
+                                                                    </DataTrigger>
+                                                                </Style.Triggers>
+                                                            </Style>
+                                                        </TextBlock.Style>
+                                                    </TextBlock>
+                                                </DataTemplate>
+                                            </DataGridTemplateColumn.CellTemplate>
+                                        </DataGridTemplateColumn>
+                                        <DataGridTextColumn Header="Taille" Width="85" SortMemberPath="Size"
+                                                            Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="Modifié le" Width="130" SortMemberPath="LastWriteUtc"
+                                                            Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
+                                        <DataGridTextColumn Header="Emplacement" Width="260" Binding="{Binding DirectoryPath}" Foreground="{DynamicResource SubtleTextBr}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </TabItem>
+
+                        <!-- 5 : Erreurs -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource TabIcon}" Text="&#xED1A;" />
+                                    <TextBlock Text="{Binding ErrorsHeader}" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <DataGrid ItemsSource="{Binding Errors}" ContextMenu="{StaticResource SimpleMenu}" Margin="0,6,0,0">
+                                <DataGrid.Columns>
+                                    <DataGridTextColumn Header="Chemin" Width="2*" Binding="{Binding Path}" />
+                                    <DataGridTextColumn Header="Erreur" Width="*" Binding="{Binding Message}" Foreground="{DynamicResource SubtleTextBr}" />
+                                </DataGrid.Columns>
+                            </DataGrid>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </Border>
+
+            <!-- ============ Carte des volumes ============ -->
+            <GridSplitter x:Name="TreemapSplitter" Grid.Row="4" Style="{StaticResource HSplitter}" />
+
+            <Border x:Name="TreemapCard" Grid.Row="5" Style="{StaticResource Card}" Margin="16,0,16,0">
+                <DockPanel>
+                    <Grid DockPanel.Dock="Top" Margin="16,10,10,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xF0E2;" Foreground="{DynamicResource AccentBr}" Margin="0,0,8,0" />
+                            <TextBlock Text="Carte des volumes" Style="{StaticResource SectionTitle}" />
+                        </StackPanel>
+                        <TextBlock Grid.Column="1" Text="{Binding FocusPath, ElementName=Treemap}" Style="{StaticResource Subtle}" Margin="14,0" TextTrimming="CharacterEllipsis" />
+                        <StackPanel Grid.Column="2" Orientation="Horizontal">
+                            <Button Style="{StaticResource GhostButton}" Click="ZoomOut_Click" IsEnabled="{Binding CanZoomOut, ElementName=Treemap}" ToolTip="Remonter d'un niveau (clic droit sur la carte)">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE74A;" FontSize="12" Margin="0,0,6,0" />
+                                    <TextBlock Text="Remonter" />
+                                </StackPanel>
+                            </Button>
+                            <Button Style="{StaticResource GhostButton}" Click="ZoomRoot_Click" IsEnabled="{Binding CanZoomOut, ElementName=Treemap}" ToolTip="Revenir au dossier analysé">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource Icon}" Text="&#xE80F;" FontSize="12" Margin="0,0,6,0" />
+                                    <TextBlock Text="Racine" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+
+                    <TextBlock DockPanel.Dock="Bottom" Margin="16,6,16,10" FontSize="12" TextTrimming="CharacterEllipsis">
+                        <TextBlock.Style>
+                            <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="{Binding HoverInfo, ElementName=Treemap}" />
+                                <Setter Property="Foreground" Value="{DynamicResource TextBr}" />
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding HoverInfo, ElementName=Treemap}" Value="">
+                                        <Setter Property="Text" Value="Plus un bloc est grand, plus il occupe d'espace · survol : détail · clic : afficher dans l'arborescence · double-clic : zoomer · clic droit : remonter" />
+                                        <Setter Property="Foreground" Value="{DynamicResource FaintTextBr}" />
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </TextBlock.Style>
+                    </TextBlock>
+
+                    <ItemsControl DockPanel.Dock="Bottom" ItemsSource="{Binding Legend, ElementName=Treemap}" Margin="16,8,16,0">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <StackPanel Orientation="Horizontal" Margin="0,2,18,2">
+                                    <Border Width="10" Height="10" CornerRadius="3" Background="{Binding Brush}" VerticalAlignment="Center" />
+                                    <TextBlock Text="{Binding Name}" Margin="6,0,5,0" FontSize="12" MaxWidth="200" TextTrimming="CharacterEllipsis" />
+                                    <TextBlock Text="{Binding SizeText}" Style="{StaticResource Subtle}" FontSize="12" />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+
+                    <ui:TreemapView x:Name="Treemap" Margin="10,0"
+                                    Root="{Binding TreemapRoot}"
+                                    SelectedNode="{Binding SelectedNode, Mode=OneWay}" />
+                </DockPanel>
+            </Border>
+
+            <!-- ============ Barre d'état ============ -->
+            <Grid Grid.Row="6" Margin="20,0">
+                <TextBlock Text="{Binding StatusText}" Style="{StaticResource Subtle}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,0,160,0" />
+                <TextBlock Text="PrimaFiles 1.2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource FaintTextBr}" />
+            </Grid>
+        </Grid>
+    </Border>
+</Window>

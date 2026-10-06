@@ -1,0 +1,51 @@
+<!-- Palette du thème clair. Les clés doivent être identiques à celles de Dark.xaml. -->
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <SolidColorBrush x:Key="WindowBg" Color="#F3F4F7" />
+    <SolidColorBrush x:Key="CardBg" Color="#FFFFFF" />
+    <SolidColorBrush x:Key="BorderBr" Color="#E3E6EB" />
+    <SolidColorBrush x:Key="ControlBorderBr" Color="#D3D8DF" />
+    <SolidColorBrush x:Key="InputHoverBorderBr" Color="#B5BCC7" />
+    <SolidColorBrush x:Key="TextBr" Color="#1D2330" />
+    <SolidColorBrush x:Key="SubtleTextBr" Color="#6B7280" />
+    <SolidColorBrush x:Key="FaintTextBr" Color="#9CA3AF" />
+    <SolidColorBrush x:Key="AccentBr" Color="#2563EB" />
+    <SolidColorBrush x:Key="AccentHoverBr" Color="#1D4ED8" />
+    <SolidColorBrush x:Key="AccentPressedBr" Color="#1E40AF" />
+    <SolidColorBrush x:Key="AccentSoftBr" Color="#E7EEFD" />
+    <SolidColorBrush x:Key="AccentSoftBorderBr" Color="#B9CCF7" />
+    <SolidColorBrush x:Key="HoverBr" Color="#F1F3F7" />
+    <SolidColorBrush x:Key="PressedBr" Color="#E5E8EE" />
+    <SolidColorBrush x:Key="RowHoverBr" Color="#F4F7FB" />
+    <SolidColorBrush x:Key="RowSelectedBr" Color="#E3ECFD" />
+    <SolidColorBrush x:Key="RowFlashBr" Color="#FFF1B8" />
+    <SolidColorBrush x:Key="TrackBr" Color="#EDF0F4" />
+    <SolidColorBrush x:Key="SegmentBg" Color="#EDEFF3" />
+    <SolidColorBrush x:Key="ExpanderHoverBr" Color="#E3E7EE" />
+    <SolidColorBrush x:Key="TitleHoverBr" Color="#E6E8EC" />
+    <SolidColorBrush x:Key="TitlePressedBr" Color="#D9DCE2" />
+    <SolidColorBrush x:Key="TileHoverBg" Color="#FAFBFF" />
+    <SolidColorBrush x:Key="TileHoverBorderBr" Color="#9DB8F2" />
+    <SolidColorBrush x:Key="ScrollThumbBr" Color="#C9CED6" />
+    <SolidColorBrush x:Key="ScrollThumbHoverBr" Color="#A3AAB5" />
+    <SolidColorBrush x:Key="ScrollThumbDragBr" Color="#8A929E" />
+    <SolidColorBrush x:Key="SplitterGripBr" Color="#D3D8DF" />
+    <SolidColorBrush x:Key="TooltipBg" Color="#1F2937" />
+    <SolidColorBrush x:Key="DangerBr" Color="#DC2626" />
+    <SolidColorBrush x:Key="DangerSoftBr" Color="#FDECEC" />
+    <SolidColorBrush x:Key="WarningBr" Color="#D97706" />
+    <SolidColorBrush x:Key="TreemapBg" Color="#F3F4F7" />
+    <SolidColorBrush x:Key="FilesIconBr" Color="#5B7FA6" />
+    <SolidColorBrush x:Key="AdminBadgeBg" Color="#FEF3E2" />
+
+    <SolidColorBrush x:Key="KpiBlueBg" Color="#E7EEFD" />
+    <SolidColorBrush x:Key="KpiBlueFg" Color="#2563EB" />
+    <SolidColorBrush x:Key="KpiGreenBg" Color="#E5F6EC" />
+    <SolidColorBrush x:Key="KpiGreenFg" Color="#16A34A" />
+    <SolidColorBrush x:Key="KpiAmberBg" Color="#FEF3E2" />
+    <SolidColorBrush x:Key="KpiAmberFg" Color="#D97706" />
+    <SolidColorBrush x:Key="KpiPurpleBg" Color="#F1EAFE" />
+    <SolidColorBrush x:Key="KpiPurpleFg" Color="#7C3AED" />
+    <SolidColorBrush x:Key="KpiRedBg" Color="#FDECEC" />
+    <SolidColorBrush x:Key="KpiRedFg" Color="#DC2626" />
+</ResourceDictionary>
