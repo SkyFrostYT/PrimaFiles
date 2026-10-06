@@ -6,79 +6,71 @@ Utilisation de Claude Code (Anthropic) comme assistant en cybersécurité pour l
 
 ## Installation
 
-1. Téléchargez **`Installer.ps1`** depuis la [dernière version](https://github.com/SkyFrostYT/PrimaFiles/releases/latest).
-2. Ouvrez PowerShell dans le dossier du téléchargement et lancez :
+1. Téléchargez **`PrimaFiles.exe`** depuis la [dernière version](https://github.com/SkyFrostYT/PrimaFiles/releases/latest)
+   (ou `PrimaFiles-portable-….zip` si le runtime .NET 10 Desktop n'est pas installé : extrayez-le, puis lancez `PrimaFiles.exe`).
+2. Lancez-le. Au premier lancement, PrimaFiles propose de **s'installer sur l'ordinateur** :
+   - **Oui** : acceptez l'invite administrateur (UAC). PrimaFiles est copié dans **`C:\Program Files\PrimaFiles`**,
+     ajouté au **menu Démarrer** et à *Paramètres > Applications installées*, puis s'ouvre depuis son emplacement installé.
+     Le fichier téléchargé peut ensuite être supprimé.
+   - **Non** : PrimaFiles s'ouvre sans être installé, et la question n'est plus posée pour ce fichier.
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\Installer.ps1
-   ```
+Pourquoi l'installer :
 
-3. Acceptez l'invite administrateur (UAC). PrimaFiles est ensuite disponible dans le **menu Démarrer**.
+- `C:\Program Files` n'est modifiable que par un administrateur : aucun programme ne peut glisser une DLL piégée à côté
+  de l'exécutable, ce qui reste possible dans le dossier Téléchargements ;
+- la copie installée ne porte plus la marque « téléchargé depuis Internet » : **plus d'alerte SmartScreen au lancement** ;
+- lancer une version plus récente téléchargée propose de **mettre à jour** l'installation.
 
-L'installateur :
+**Désinstallation** : *Paramètres > Applications > Applications installées > PrimaFiles > Désinstaller*. Vos réglages
+(historique, thème) sont conservés dans `%LOCALAPPDATA%\PrimaFiles`.
 
-- installe PrimaFiles dans **`C:\Program Files\PrimaFiles`** (dossier protégé : modifiable uniquement par un administrateur) ;
-- télécharge la dernière version depuis GitHub et **vérifie son empreinte SHA-256** avant de l'installer
-  (si `PrimaFiles.exe` et `SHA256SUMS.txt` sont à côté du script, ce sont eux qui sont utilisés) ;
-- choisit la version standard si le runtime .NET 10 Desktop est présent, sinon la version portable (forcer : `-Portable`) ;
-- retire la marque « téléchargé depuis Internet » : **plus d'alerte SmartScreen au lancement** ;
-- ajoute PrimaFiles dans *Paramètres > Applications installées*, d'où il se désinstalle normalement.
-
-Désinstallation manuelle :
+En ligne de commande (déploiement) :
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File "C:\Program Files\PrimaFiles\Installer.ps1" -Desinstaller
+PrimaFiles.exe --install --quiet                                        # installe sans aucune question (UAC seulement)
+& "C:\Program Files\PrimaFiles\PrimaFiles.exe" --uninstall --quiet      # désinstalle sans confirmation
 ```
-
-Sans installation : téléchargez `PrimaFiles.exe` (ou le zip portable) et lancez-le directement.
 
 ## Éviter l'alerte de Windows (« Windows a protégé votre ordinateur »)
 
 PrimaFiles n'est pas signé par un certificat commercial : un fichier téléchargé déclenche l'avertissement SmartScreen
-au premier lancement. Trois solutions, de la plus simple à la plus complète :
+au premier lancement. Solutions, de la plus simple à la plus complète :
 
-**1. Passer l'alerte une fois** : « Informations complémentaires » → « Exécuter quand même ».
+**1. Passer l'alerte une fois** : « Informations complémentaires » → « Exécuter quand même », puis installez PrimaFiles :
+l'alerte ne réapparaîtra plus.
 
-**2. Débloquer le fichier téléchargé** (c'est la marque « provient d'Internet » qui déclenche l'alerte) :
+**2. Débloquer le fichier téléchargé** avant de le lancer (c'est la marque « provient d'Internet » qui déclenche l'alerte) :
 
 ```powershell
 Unblock-File -Path "$env:USERPROFILE\Downloads\PrimaFiles.exe"
 ```
 
-**3. Auto-signer le programme sur votre PC** : Windows affiche alors un éditeur identifié (« PrimaFiles (auto-signé
-sur ce PC) ») au lieu d'« Éditeur inconnu », et les stratégies qui n'autorisent que les programmes signés l'acceptent.
+**3. Auto-signer le programme installé sur votre PC** : Windows affiche alors un éditeur identifié (« PrimaFiles
+(auto-signé sur ce PC) ») au lieu d'« Éditeur inconnu », et les stratégies qui n'autorisent que les programmes signés
+l'acceptent. Après l'installation, dans PowerShell **administrateur** :
 
-- Avec l'installateur (recommandé) :
-
-  ```powershell
-  powershell -ExecutionPolicy Bypass -File .\Installer.ps1 -AutoSigner
-  ```
-
-- Ou manuellement, sur un `PrimaFiles.exe` déjà copié dans un dossier protégé (PowerShell **administrateur**) :
-
-  ```powershell
-  $exe  = "C:\Program Files\PrimaFiles\PrimaFiles.exe"
-  $cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=PrimaFiles (auto-signé sur ce PC)" `
-          -CertStoreLocation Cert:\LocalMachine\My -KeyAlgorithm RSA -KeyLength 3072 -KeyExportPolicy NonExportable `
-          -NotAfter (Get-Date).AddYears(10)
-  $cer  = "$env:TEMP\PrimaFiles.cer"
-  Export-Certificate -Cert $cert -FilePath $cer | Out-Null
-  Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
-  Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
-  Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -HashAlgorithm SHA256
-  Remove-Item "Cert:\LocalMachine\My\$($cert.Thumbprint)" -DeleteKey   # destruction de la clé privée
-  Remove-Item $cer
-  ```
+```powershell
+$exe  = "C:\Program Files\PrimaFiles\PrimaFiles.exe"
+$cert = New-SelfSignedCertificate -Type CodeSigningCert -Subject "CN=PrimaFiles (auto-signé sur ce PC)" `
+        -CertStoreLocation Cert:\LocalMachine\My -KeyAlgorithm RSA -KeyLength 3072 -KeyExportPolicy NonExportable `
+        -NotAfter (Get-Date).AddYears(10)
+$cer  = "$env:TEMP\PrimaFiles.cer"
+Export-Certificate -Cert $cert -FilePath $cer | Out-Null
+Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
+Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
+Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -HashAlgorithm SHA256
+Remove-Item "Cert:\LocalMachine\My\$($cert.Thumbprint)" -DeleteKey   # destruction de la clé privée
+Remove-Item $cer
+```
 
 > [!IMPORTANT]
 > - L'auto-signature n'est reconnue **que sur le PC où elle a été faite**. Pour une signature reconnue partout, il faut
 >   un certificat commercial (DigiCert, Sectigo, Microsoft Artifact Signing…) ou un certificat d'entreprise déployé par GPO.
 > - La **clé privée est détruite** juste après la signature : le certificat approuvé ne peut servir à signer aucun autre
 >   programme, même si le PC est compromis plus tard.
-> - Après une mise à jour, relancez l'installateur avec `-AutoSigner` (une signature ne couvre qu'une version précise).
-> - Si **Smart App Control** est activé (Windows 11), il peut bloquer un programme auto-signé : il faut alors le désactiver
->   ou attendre que PrimaFiles soit reconnu par Microsoft.
-> - La désinstallation retire aussi le certificat.
+> - Après une mise à jour de PrimaFiles, relancez ces commandes (une signature ne couvre qu'une version précise).
+> - Si **Smart App Control** est activé (Windows 11), il peut bloquer un programme auto-signé.
+> - La désinstallation de PrimaFiles retire aussi ce certificat.
 
 ## Fonctionnalités
 
@@ -137,7 +129,7 @@ Produit dans `publish\` :
 - `SHA256SUMS.txt` : empreintes pour vérifier l'intégrité des fichiers distribués.
 
 Avec un certificat de signature de code (commercial ou d'entreprise) : `.\Publier.ps1 -Thumbprint <empreinte>`
-(signature SHA-256 horodatée). `Installer.ps1` est à joindre à chaque publication GitHub, avec `SHA256SUMS.txt`.
+(signature SHA-256 horodatée). À joindre à chaque publication GitHub : `PrimaFiles.exe`, le zip portable et `SHA256SUMS.txt`.
 
 ## Structure
 

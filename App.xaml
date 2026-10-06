@@ -1,8 +1,7 @@
 <Application x:Class="StorageScanner.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:ui="clr-namespace:StorageScanner.UI"
-             StartupUri="MainWindow.xaml">
+             xmlns:ui="clr-namespace:StorageScanner.UI">
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

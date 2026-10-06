@@ -203,6 +203,34 @@ public static class AppData
     }
 }
 
+/// <summary>Copies de PrimaFiles (chemin + version) pour lesquelles l'utilisateur a refusé l'installation :
+/// la question n'est plus reposée pour ce fichier-là.</summary>
+public static class InstallPromptStore
+{
+    private static readonly string FilePath = AppData.File("install-declined.txt");
+
+    public static bool WasDeclined(string key)
+    {
+        try { return File.Exists(FilePath) && File.ReadLines(FilePath).Take(50).Any(l => string.Equals(l, key, StringComparison.OrdinalIgnoreCase)); }
+        catch (IOException) { return false; }
+        catch (UnauthorizedAccessException) { return false; }
+    }
+
+    public static void Decline(string key)
+    {
+        if (!AppData.CanWrite) return;
+        try
+        {
+            Directory.CreateDirectory(AppData.Dir);
+            var lines = File.Exists(FilePath) ? File.ReadLines(FilePath).Take(19).ToList() : [];
+            lines.Insert(0, key);
+            File.WriteAllLines(FilePath, lines);
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+}
+
 /// <summary>Historique des chemins scannés (%LOCALAPPDATA%\StorageScanner\recent.txt).</summary>
 public static class RecentStore
 {

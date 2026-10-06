@@ -38,6 +38,29 @@ public static class Elevation
         }
     }
 
+    /// <summary>Lance ce même exécutable en administrateur avec les arguments donnés et attend sa fin.
+    /// Renvoie son code de sortie, ou null si l'utilisateur refuse l'invite UAC.</summary>
+    public static int? RunElevatedAndWait(params string[] args)
+    {
+        var exe = Environment.ProcessPath;
+        if (exe is null) return null;
+        var psi = new ProcessStartInfo(exe) { UseShellExecute = true, Verb = "runas" };
+        foreach (var a in args) psi.ArgumentList.Add(a);
+        psi.ArgumentList.Add("--requested-by");
+        psi.ArgumentList.Add(Environment.ProcessId.ToString(System.Globalization.CultureInfo.InvariantCulture));
+        try
+        {
+            using var p = Process.Start(psi);
+            if (p is null) return null;
+            p.WaitForExit();
+            return p.ExitCode;
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) // ERROR_CANCELLED : UAC refusé
+        {
+            return null;
+        }
+    }
+
     /// <summary>Active SeBackupPrivilege (et SeRestore pour les métadonnées) : en administrateur, permet de lister
     /// des dossiers dont les droits n'autorisent normalement pas la lecture (System Volume Information, profils…).
     /// Lecture seule : l'application ne modifie rien.</summary>
