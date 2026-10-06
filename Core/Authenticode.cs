@@ -7,8 +7,21 @@ namespace StorageScanner.Core;
 /// Aucune interface affichée, aucun accès réseau (pas de vérification de révocation en ligne).</summary>
 public static class Authenticode
 {
+    /// <summary>Au-delà, la vérification (qui relit tout le fichier) ralentirait trop l'analyse, surtout sur le réseau.</summary>
+    private const long MaxSize = 256L * 1024 * 1024;
+
     public static bool IsTrusted(string path)
     {
+        path = SafePath.ForIo(path);
+        try
+        {
+            if (new FileInfo(path).Length > MaxSize) return false;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
+
         var fileInfo = new WINTRUST_FILE_INFO
         {
             cbStruct = (uint)Marshal.SizeOf<WINTRUST_FILE_INFO>(),

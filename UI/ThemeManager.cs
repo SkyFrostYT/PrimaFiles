@@ -35,7 +35,7 @@ public static class ThemeManager
         if (dicts.Count > 0) dicts[0] = palette;
         else dicts.Insert(0, palette);
 
-        if (save)
+        if (save && AppData.CanWrite)
         {
             try
             {

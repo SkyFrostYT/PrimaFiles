@@ -25,10 +25,11 @@ public sealed class FolderFileItem(string name, long size, DateTime lastWriteUtc
     public string FullPath { get; } = fullPath;
     public string Extension => Path.GetExtension(Name).ToLowerInvariant();
 
-    public SafetyLevel Safety { get; } = StorageScanner.Core.Safety.ForFile(directory, name, attributes);
-    public bool IsSystem => Safety != SafetyLevel.Normal;
-    public bool IsCritical => Safety == SafetyLevel.Critical;
-    public string? SafetyText => StorageScanner.Core.Safety.Describe(Safety);
+    public SafetyLevel Safety { get; } = StorageScanner.Core.Safety.ForFile(context, name, attributes);
+    // Jamais de logo Windows ni de triangle « à ne pas supprimer » sur un fichier suspect : ce serait un gage de confiance
+    public bool IsSystem => Safety != SafetyLevel.Normal && !Suspicion.IsSuspect;
+    public bool IsCritical => Safety == SafetyLevel.Critical && !Suspicion.IsSuspect;
+    public string? SafetyText => IsSystem ? StorageScanner.Core.Safety.Describe(Safety) : null;
 }
 
 public sealed class DriveItem(string root, string title, string detail, double usedPercent, bool isNetwork)
@@ -600,9 +601,13 @@ public sealed class MainViewModel : ObservableObject
             {
                 var opts = new EnumerationOptions { IgnoreInaccessible = true, AttributesToSkip = 0, BufferSize = 64 * 1024 };
                 var context = DirContext.For(path);
-                var e = new FileSystemEnumerable<FolderFileItem>(path,
-                    (ref FileSystemEntry en) => new FolderFileItem(en.FileName.ToString(), en.Length, en.LastWriteTimeUtc.UtcDateTime,
-                        en.ToFullPath(), path, en.Attributes, context),
+                var e = new FileSystemEnumerable<FolderFileItem>(SafePath.ForIo(path),
+                    (ref FileSystemEntry en) =>
+                    {
+                        string name = en.FileName.ToString();
+                        return new FolderFileItem(name, en.Length, en.LastWriteTimeUtc.UtcDateTime,
+                            Path.Join(path, name), path, en.Attributes, context);
+                    },
                     opts)
                 {
                     ShouldIncludePredicate = (ref FileSystemEntry en) => !en.IsDirectory,
@@ -629,7 +634,7 @@ public sealed class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            if (!cts.IsCancellationRequested) FolderFilesHeader = "Erreur : " + ex.Message;
+            if (!cts.IsCancellationRequested) FolderFilesHeader = "Erreur : " + SafePath.Display(ex.Message);
         }
     }
 

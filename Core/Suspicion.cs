@@ -24,6 +24,8 @@ public enum SuspicionReason : ushort
     RiskyLocation = 1 << 6,
     Startup = 1 << 7,
     HiddenExecutable = 1 << 8,
+    AmbiguousName = 1 << 9,
+    SystemAttribute = 1 << 10,
 }
 
 public readonly record struct Suspicion(SuspicionLevel Level, SuspicionReason Reasons)
@@ -40,6 +42,8 @@ public readonly struct DirContext
     private enum Flags : ushort
     {
         Windows = 1, ProgramFiles = 2, Temp = 4, Downloads = 8, Startup = 16, RecycleBin = 32, Public = 64, DevTree = 128,
+        /// <summary>Cache Internet / pièces jointes Outlook ouvertes (INetCache\Content.Outlook).</summary>
+        WebCache = 256,
     }
 
     private DirContext(Flags flags) => _flags = flags;
@@ -54,14 +58,29 @@ public readonly struct DirContext
     public bool IsDevTree => (_flags & Flags.DevTree) != 0;
     public bool IsTemp => (_flags & Flags.Temp) != 0;
     /// <summary>Emplacements où les logiciels malveillants se déposent volontiers. Pour Temp et Téléchargements,
-    /// seuls le dossier lui-même et ses sous-dossiers directs comptent : un projet décompressé plus bas n'est pas visé.</summary>
-    public bool IsRisky => !IsTrusted && !IsDevTree
-                           && (_flags & (Flags.Temp | Flags.Downloads | Flags.Startup | Flags.RecycleBin | Flags.Public)) != 0;
+    /// seuls le dossier lui-même et ses sous-dossiers directs comptent : un projet décompressé plus bas n'est pas visé.
+    /// Un nom de dossier de développement (node_modules…) ne suffit pas à y échapper : il est trivial à imiter.</summary>
+    public bool IsRisky => !IsTrusted
+                           && ((_flags & (Flags.Temp | Flags.Downloads | Flags.WebCache)) != 0
+                               || ((_flags & (Flags.Startup | Flags.RecycleBin | Flags.Public)) != 0 && !IsDevTree));
 
     private static readonly string WindowsDir = Environment.GetFolderPath(Environment.SpecialFolder.Windows).TrimEnd('\\');
+    private static readonly string SystemDrive = Path.GetPathRoot(WindowsDir) is { Length: > 0 } r ? r : @"C:\";
 
-    private static readonly string[] WindowsLike = [@"\Windows.old\", @"\$Windows.~BT\", @"\$Windows.~WS\", @"\$WinREAgent\"];
-    private static readonly string[] InstallDirs = [@"\Program Files", @"\ProgramData\Microsoft\", @"\AppData\Local\Programs\", @"\AppData\Local\Microsoft\"];
+    // Les emplacements de confiance ne sont reconnus qu'à leur place réelle (racine du volume ou profil) :
+    // un dossier « Program Files » ou « Windows.old » créé dans Téléchargements n'accorde aucune confiance.
+    private static readonly string[] WindowsLikeRoots = ["Windows.old", "$Windows.~BT", "$Windows.~WS", "$WinREAgent"];
+    private static readonly string[] InstallRoots = ["Program Files", "Program Files (x86)", @"ProgramData\Microsoft"];
+    private static readonly string[] ProfileInstallDirs = [@"AppData\Local\Programs", @"AppData\Local\Microsoft"];
+
+    /// <summary>Sous-dossiers de Windows accessibles en écriture aux utilisateurs : souvent utilisés pour déposer
+    /// et cacher un programme malveillant, ils ne bénéficient pas de la confiance accordée à Windows.</summary>
+    private static readonly string[] WritableWindowsDirs =
+    [
+        "Temp", "Tasks", "tracing", @"System32\Tasks", @"SysWOW64\Tasks", @"System32\spool\drivers\color",
+        @"System32\spool\PRINTERS", @"Registration\CRMLog", @"System32\Microsoft\Crypto\RSA\MachineKeys", "debug",
+        @"ServiceProfiles\LocalService\AppData\Local\Temp", @"ServiceProfiles\NetworkService\AppData\Local\Temp",
+    ];
     private static readonly string[] DevMarkers =
     [
         @"\node_modules\", @"\.git\", @"\site-packages\", @"\dist-packages\", @"\vendor\", @"\.gradle\", @"\.m2\",
@@ -71,8 +90,36 @@ public readonly struct DirContext
     public static DirContext For(string path)
     {
         var f = (Flags)0;
-        if (StartsWithDir(path, WindowsDir) || ContainsAny(path, WindowsLike)) f |= Flags.Windows;
-        if (ContainsAny(path, InstallDirs)) f |= Flags.ProgramFiles;
+        string? rel = PathBelowVolumeRoot(path, out bool adminShare);
+        if (rel is not null)
+        {
+            // Windows et ses anciennes copies : uniquement sur le disque système (ou le C$ d'un poste distant).
+            // Ailleurs, n'importe quel utilisateur peut créer un dossier « Windows » à la racine d'un disque.
+            bool systemVolume = adminShare || path.StartsWith(SystemDrive, StringComparison.OrdinalIgnoreCase);
+            bool windows = (!adminShare && StartsWithDir(path, WindowsDir))
+                           || (adminShare && StartsWithSegment(rel, "Windows"))
+                           || (systemVolume && StartsWithAny(rel, WindowsLikeRoots));
+            if (windows)
+            {
+                string winRel = adminShare || !StartsWithDir(path, WindowsDir)
+                    ? rel[Math.Min(rel.Length, rel.IndexOf('\\') < 0 ? rel.Length : rel.IndexOf('\\') + 1)..]
+                    : path[Math.Min(path.Length, WindowsDir.Length + 1)..];
+                if (!StartsWithAny(winRel, WritableWindowsDirs)) f |= Flags.Windows;
+            }
+            if (StartsWithAny(rel, InstallRoots)) f |= Flags.ProgramFiles;
+            // C:\Users\<nom>\AppData\Local\Programs|Microsoft (hors cache Internet / pièces jointes Outlook)
+            if (StartsWithSegment(rel, "Users"))
+            {
+                var parts = rel.Split('\\', 3);
+                if (parts.Length == 3 && StartsWithAny(parts[2], ProfileInstallDirs)) f |= Flags.ProgramFiles;
+            }
+        }
+        if (path.Contains(@"\INetCache\", StringComparison.OrdinalIgnoreCase) || path.EndsWith(@"\INetCache", StringComparison.OrdinalIgnoreCase)
+            || path.Contains(@"\Temporary Internet Files\", StringComparison.OrdinalIgnoreCase))
+        {
+            f &= ~Flags.ProgramFiles;
+            f |= Flags.WebCache;
+        }
         if (ContainsAny(path + "\\", DevMarkers)) f |= Flags.DevTree;
         if (IsShallowUnder(path, "temp") || IsShallowUnder(path, "tmp")) f |= Flags.Temp;
         if (IsShallowUnder(path, "downloads") || IsShallowUnder(path, "téléchargements")) f |= Flags.Downloads;
@@ -87,6 +134,32 @@ public readonly struct DirContext
     {
         foreach (var p in parts)
             if (path.Contains(p, StringComparison.OrdinalIgnoreCase)) return true;
+        return false;
+    }
+
+    /// <summary>Partie du chemin sous la racine du volume (« C:\Program Files\X » → « Program Files\X »). Les partages
+    /// d'administration (\\pc\C$\…) sont traités comme le volume distant ; un partage ordinaire n'a pas de racine système.</summary>
+    private static string? PathBelowVolumeRoot(string path, out bool adminShare)
+    {
+        adminShare = false;
+        if (path.Length >= 2 && path[1] == ':') return path.Length > 3 ? path[3..] : "";
+        if (!path.StartsWith(@"\\", StringComparison.Ordinal)) return null;
+        var parts = path[2..].Split('\\', 3);
+        if (parts.Length >= 2 && parts[1].Length == 2 && char.IsAsciiLetter(parts[1][0]) && parts[1][1] == '$')
+        {
+            adminShare = true;
+            return parts.Length == 3 ? parts[2] : "";
+        }
+        return null;
+    }
+
+    private static bool StartsWithSegment(string rel, string segment) =>
+        rel.StartsWith(segment, StringComparison.OrdinalIgnoreCase) && (rel.Length == segment.Length || rel[segment.Length] == '\\');
+
+    private static bool StartsWithAny(string rel, string[] segments)
+    {
+        foreach (var s in segments)
+            if (StartsWithSegment(rel, s)) return true;
         return false;
     }
 
@@ -110,7 +183,7 @@ public readonly struct DirContext
 /// Conçu pour être appelé sur chaque fichier pendant le scan : aucune allocation pour un fichier ordinaire.</summary>
 public static class SuspicionRules
 {
-    private enum Kind : byte { Executable, HighRisk, Script, Text }
+    private enum Kind : byte { Executable, HighRisk, Script, Text, Shortcut }
 
     private static readonly Dictionary<string, Kind> KindMap = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -118,6 +191,10 @@ public static class SuspicionRules
         // Types quasiment jamais légitimes hors de Windows : économiseurs d'écran, anciens exécutables, scripts Windows Script Host
         [".scr"] = Kind.HighRisk, [".pif"] = Kind.HighRisk, [".com"] = Kind.HighRisk, [".hta"] = Kind.HighRisk,
         [".vbs"] = Kind.HighRisk, [".vbe"] = Kind.HighRisk, [".jse"] = Kind.HighRisk, [".wsf"] = Kind.HighRisk, [".wsh"] = Kind.HighRisk,
+        // Raccourcis : « facture.pdf.lnk » lance n'importe quelle commande. Console MMC, compléments Excel, aide compilée :
+        // vecteurs d'attaque récents, rares hors des dossiers d'applications.
+        [".lnk"] = Kind.Shortcut, [".url"] = Kind.Shortcut,
+        [".msc"] = Kind.HighRisk, [".xll"] = Kind.Script, [".chm"] = Kind.Script,
         [".js"] = Kind.Script, [".ps1"] = Kind.Script, [".bat"] = Kind.Script, [".cmd"] = Kind.Script, [".jar"] = Kind.Script,
         [".txt"] = Kind.Text, [".html"] = Kind.Text, [".htm"] = Kind.Text, [".rtf"] = Kind.Text,
     };
@@ -167,7 +244,9 @@ public static class SuspicionRules
     public static Suspicion Evaluate(in DirContext dir, string directory, ReadOnlySpan<char> name, FileAttributes attributes)
     {
         var s = Evaluate(dir, name, attributes);
-        return s.Level == SuspicionLevel.Warning && Authenticode.IsTrusted(Path.Join(directory, name)) ? default : s;
+        // Fichier « en ligne uniquement » : vérifier la signature le téléchargerait, on garde l'avertissement
+        return s.Level == SuspicionLevel.Warning && !SafePath.IsCloudOnly(attributes)
+               && Authenticode.IsTrusted(Path.Join(directory, name)) ? default : s;
     }
 
     public static Suspicion Evaluate(in DirContext dir, ReadOnlySpan<char> name, FileAttributes attributes)
@@ -177,6 +256,13 @@ public static class SuspicionRules
 
         if (name.IndexOfAny(BidiControls) >= 0)
             Raise(ref level, ref reasons, SuspicionLevel.Danger, SuspicionReason.HiddenCharacters);
+
+        // « virus.exe. », « nul.txt » : impossibles à créer normalement, Windows les confond avec un autre fichier
+        if (SafePath.IsAmbiguousName(name))
+        {
+            Raise(ref level, ref reasons, SuspicionLevel.Danger, SuspicionReason.AmbiguousName);
+            name = name.TrimEnd(". ");
+        }
 
         int dot = name.LastIndexOf('.');
         if (dot <= 0 || dot == name.Length - 1)
@@ -199,7 +285,8 @@ public static class SuspicionRules
         // facture.pdf.exe, photo.jpg   .scr… — uniquement pour ce qui s'ouvre d'un double-clic (pas les DLL :
         // « Windows.Data.Pdf.dll » est un nom de bibliothèque normal), et jamais dans le dossier Windows.
         bool launchable = kind != Kind.Executable || !ext.Equals(".dll", StringComparison.OrdinalIgnoreCase);
-        if (launchable && !dir.IsWindows)
+        // Raccourcis : seulement dans les dossiers à risque (les « Récents » de Windows et d'Office en contiennent des milliers)
+        if (launchable && !dir.IsWindows && (kind != Kind.Shortcut || dir.IsRisky))
         {
             var stem = name[..dot].TrimEnd(' ');
             int dot2 = stem.LastIndexOf('.');
@@ -210,8 +297,9 @@ public static class SuspicionRules
         if (kind == Kind.Executable && !dir.IsWindows && SystemNames.Contains(name))
             Raise(ref level, ref reasons, SuspicionLevel.Danger, SuspicionReason.SystemImpersonation);
 
-        // Règles d'emplacement : jamais dans Windows / Program Files / dépendances de développement
-        if (!dir.IsTrusted && !dir.IsDevTree)
+        // Règles d'emplacement : jamais dans Windows / Program Files, ni dans les dépendances de développement
+        // situées hors des dossiers à risque
+        if (!dir.IsTrusted && (dir.IsRisky || !dir.IsDevTree))
         {
             switch (kind)
             {
@@ -229,6 +317,10 @@ public static class SuspicionRules
 
             if (kind is Kind.Executable or Kind.HighRisk && (attributes & FileAttributes.Hidden) != 0 && launchable)
                 Raise(ref level, ref reasons, SuspicionLevel.Warning, SuspicionReason.HiddenExecutable);
+
+            // Attribut Système posé sur un programme hors de Windows : camouflage pour paraître légitime
+            if (kind is Kind.Executable or Kind.HighRisk or Kind.Script && (attributes & FileAttributes.System) != 0 && launchable)
+                Raise(ref level, ref reasons, SuspicionLevel.Warning, SuspicionReason.SystemAttribute);
         }
 
         // Démarrage automatique : surveillé partout, c'est un point d'ancrage classique des logiciels malveillants
@@ -279,6 +371,8 @@ public static class SuspicionRules
         if (r.HasFlag(SuspicionReason.RiskyLocation)) parts.Add("situé dans un dossier à risque (Temp, Téléchargements, Corbeille, Public, Démarrage)");
         if (r.HasFlag(SuspicionReason.Startup)) parts.Add("se lance automatiquement au démarrage de Windows");
         if (r.HasFlag(SuspicionReason.HiddenExecutable)) parts.Add("programme caché hors des dossiers d'applications");
+        if (r.HasFlag(SuspicionReason.SystemAttribute)) parts.Add("programme marqué « fichier système » hors du dossier Windows (camouflage)");
+        if (r.HasFlag(SuspicionReason.AmbiguousName)) parts.Add("nom piégé (point ou espace final, nom réservé) : Windows le confond avec un autre fichier");
         return string.Join(" · ", parts);
     }
 

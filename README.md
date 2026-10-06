@@ -29,6 +29,20 @@ Analyse de l'occupation d'un disque local ou d'un partage réseau (`\\serveur\pa
 | Réglages locaux | historique et thème dans `%LOCALAPPDATA%\PrimaFiles` uniquement |
 | Publication sans auto-extraction ni compression | évite les heuristiques « packer » des antivirus |
 | Métadonnées de version complètes, build déterministe | exécutable identifiable, empreintes SHA-256 fournies |
+| Chemins `\\?\` pour toutes les lectures | un nom piégé (`virus.exe.`, `nul.txt`, dossier `Docs `) ne peut pas faire analyser, hacher ou vérifier un autre fichier |
+| Vérification antivirus robuste | nom piégé → tout le dossier est analysé ; analyseur arrêté en cas d'annulation ; seul le bilan final est lu |
+| Aucune écriture en mode administrateur | historique et thème non enregistrés : pas d'écrasement de fichier système via un lien placé dans le profil |
+| Chargement des DLL durci | dossier courant exclu, DLL de System32 prioritaires, DLL « intégrité faible » refusées |
+| Fichiers « en ligne uniquement » ignorés | doublons et signatures ne déclenchent pas le téléchargement des fichiers OneDrive / SharePoint |
+| Réponses réseau filtrées | un serveur ne peut pas faire analyser un autre chemin via un nom de partage piégé |
+
+### Détection des fichiers suspects : renforcements 1.3
+
+- Les emplacements de confiance (Windows, Program Files, AppData\Local\Programs…) ne sont reconnus qu'à leur **place réelle** : un dossier `Program Files` ou `Windows.old` recréé dans Téléchargements ne protège plus un programme malveillant.
+- Les sous-dossiers de Windows **accessibles en écriture** (`Windows\Temp`, `Tasks`, `tracing`, `spool\drivers\color`…) ne sont plus considérés comme système.
+- Le cache Internet et les **pièces jointes Outlook ouvertes** (`INetCache\Content.Outlook`) sont des emplacements à risque.
+- Nouveaux indices : nom piégé, programme marqué « fichier système » hors de Windows, raccourcis à double extension (`facture.pdf.lnk`), consoles `.msc`, compléments Excel `.xll`, aide `.chm`.
+- Un fichier suspect n'affiche plus jamais le logo Windows ni le triangle « à ne pas supprimer ».
 
 ## Publication
 

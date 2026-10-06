@@ -47,7 +47,18 @@ public sealed class AntivirusEngine
 
     public async Task<AvResult> ScanAsync(string file, CancellationToken ct = default)
     {
-        if (!File.Exists(file)) return new AvResult(AvVerdict.Error, "Fichier introuvable (déplacé ou mis en quarantaine ?)");
+        if (!File.Exists(SafePath.ForIo(file))) return new AvResult(AvVerdict.Error, "Fichier introuvable (déplacé ou mis en quarantaine ?)");
+
+        // Nom piégé (« virus.exe. ») : passé tel quel, l'antivirus analyserait un autre fichier et le déclarerait sain.
+        // On analyse alors tout le dossier qui le contient.
+        string target = file;
+        string note = "";
+        if (SafePath.IsAmbiguousPath(file))
+        {
+            target = SafePath.NearestUnambiguousFolder(file);
+            note = $" — dossier analysé : {target}";
+        }
+        if (!Path.IsPathFullyQualified(target)) return new AvResult(AvVerdict.Error, "Chemin non valide");
 
         var psi = new ProcessStartInfo(_exe)
         {
@@ -61,7 +72,7 @@ public sealed class AntivirusEngine
             // Analyse simple, sans suppression : l'antivirus applique sa propre politique s'il détecte une menace
             psi.ArgumentList.Add("--skip_cache");
             psi.ArgumentList.Add("--noflyer");
-            psi.ArgumentList.Add(file);
+            psi.ArgumentList.Add(target); // chemin absolu : ne peut pas être pris pour une option (« -… »)
         }
         else
         {
@@ -69,28 +80,40 @@ public sealed class AntivirusEngine
             psi.ArgumentList.Add("-ScanType");
             psi.ArgumentList.Add("3");
             psi.ArgumentList.Add("-File");
-            psi.ArgumentList.Add(file);
+            psi.ArgumentList.Add(target);
             psi.ArgumentList.Add("-DisableRemediation");
         }
 
+        Process? p = null;
         try
         {
-            using var p = Process.Start(psi) ?? throw new InvalidOperationException("Impossible de lancer l'antivirus");
-            var stdout = p.StandardOutput.ReadToEndAsync(ct);
-            var stderr = p.StandardError.ReadToEndAsync(ct);
+            p = Process.Start(psi) ?? throw new InvalidOperationException("Impossible de lancer l'antivirus");
+            var stdout = p.StandardOutput.ReadToEndAsync(CancellationToken.None);
+            var stderr = p.StandardError.ReadToEndAsync(CancellationToken.None);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
             timeout.CancelAfter(TimeSpan.FromMinutes(10));
             await p.WaitForExitAsync(timeout.Token);
             string output = await stdout + await stderr;
-            return Interpret(p.ExitCode, output);
+            var r = Interpret(p.ExitCode, output);
+            return note.Length == 0 ? r : r with { Message = r.Message + note };
         }
         catch (OperationCanceledException)
         {
-            return new AvResult(AvVerdict.Error, "Analyse interrompue");
+            return new AvResult(AvVerdict.Error, ct.IsCancellationRequested ? "Analyse interrompue" : "Délai dépassé (10 min)");
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
         {
             return new AvResult(AvVerdict.Error, ex.Message);
+        }
+        finally
+        {
+            // Annulation ou délai dépassé : l'analyseur ne doit pas continuer à tourner en arrière-plan
+            if (p is not null)
+            {
+                try { if (!p.HasExited) p.Kill(entireProcessTree: true); }
+                catch (Exception ex) when (ex is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+                p.Dispose();
+            }
         }
     }
 
@@ -98,9 +121,11 @@ public sealed class AntivirusEngine
     {
         if (_kind == EngineKind.WithSecure)
         {
-            var m = Regex.Match(output, @"Harmful items:\s*(\d+)", RegexOptions.IgnoreCase);
+            // Dernière occurrence : c'est le bilan final (le texte qui précède peut reprendre des noms de fichiers)
+            var m = Regex.Match(output, @"^\s*Harmful items:\s*(\d{1,9})\s*$",
+                RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.RightToLeft, TimeSpan.FromSeconds(2));
             if (m.Success)
-                return int.Parse(m.Groups[1].Value) > 0
+                return int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) > 0
                     ? new AvResult(AvVerdict.Threat, $"MENACE DÉTECTÉE par {Name}")
                     : new AvResult(AvVerdict.Clean, $"Aucune menace ({Name})");
             return new AvResult(AvVerdict.Error, $"Réponse inattendue de {Name} (code {exitCode})");

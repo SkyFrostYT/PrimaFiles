@@ -81,9 +81,10 @@ public sealed class FileEntry
 
     private SafetyLevel? _safety;
     public SafetyLevel Safety => _safety ??= StorageScanner.Core.Safety.ForFile(Dir.FullPath, Name, Attributes);
-    public bool IsSystem => Safety != SafetyLevel.Normal;
-    public bool IsCritical => Safety == SafetyLevel.Critical;
-    public string? SafetyText => StorageScanner.Core.Safety.Describe(Safety);
+    // Jamais de logo Windows ni de triangle « à ne pas supprimer » sur un fichier suspect : ce serait un gage de confiance
+    public bool IsSystem => Safety != SafetyLevel.Normal && !Suspicion.IsSuspect;
+    public bool IsCritical => Safety == SafetyLevel.Critical && !Suspicion.IsSuspect;
+    public string? SafetyText => IsSystem ? StorageScanner.Core.Safety.Describe(Safety) : null;
 
     private Suspicion? _suspicion;
     public Suspicion Suspicion => _suspicion ??= SuspicionRules.Evaluate(DirContext.For(Dir.FullPath), Dir.FullPath, Name, Attributes);

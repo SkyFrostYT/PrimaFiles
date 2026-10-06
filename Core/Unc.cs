@@ -58,7 +58,9 @@ public static class Unc
                 bool isDisk = (info.Type & 0xFF) == StypeDiskTree;
                 // Partages d'administration (C$, ADMIN$, IPC$…) exclus ; partages cachés métier (Commun$…) conservés
                 bool isSpecial = (info.Type & StypeSpecial) != 0 || info.Name.Equals("print$", StringComparison.OrdinalIgnoreCase);
-                if (isDisk && !isSpecial) result.Add(info.Name);
+                // Nom renvoyé par le serveur : on refuse ce qui ne peut pas être un nom de partage (« .. », « a\b », « C: »…)
+                // pour qu'un serveur malveillant ne puisse pas faire analyser un autre chemin
+                if (isDisk && !isSpecial && IsValidShareName(info.Name)) result.Add(info.Name);
             }
         }
         finally
@@ -68,6 +70,10 @@ public static class Unc
         result.Sort(NaturalComparer.Instance);
         return result;
     }
+
+    private static bool IsValidShareName(string? name) =>
+        !string.IsNullOrWhiteSpace(name) && name.Length <= 80 && name.Trim('.').Length > 0
+        && name.AsSpan().IndexOfAny("\\/:*?\"<>|") < 0 && !name.Any(char.IsControl);
 
     private const uint StypeDiskTree = 0;
     private const uint StypeSpecial = 0x80000000;

@@ -267,7 +267,15 @@ public partial class MainWindow : Window
         {
             // Chemin absolu de l'Explorateur : on ne dépend pas du PATH (pas de détournement possible)
             string explorer = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Windows), "explorer.exe");
-            if (path.Contains('"')) return; // un chemin Windows valide ne contient jamais de guillemet
+            if (path.Contains('"') || !Path.IsPathFullyQualified(path)) return; // un chemin Windows valide ne contient jamais de guillemet
+            // Nom piégé (« virus.exe. ») : l'Explorateur ouvrirait un autre élément, on ouvre le dossier sain le plus proche
+            if (SafePath.IsAmbiguousPath(path))
+            {
+                path = SafePath.NearestUnambiguousFolder(path);
+                isFile = false;
+            }
+            // Un « dossier » remplacé entre-temps par un fichier serait exécuté par l'Explorateur : on le sélectionne seulement
+            if (!isFile && !Directory.Exists(SafePath.ForIo(path))) isFile = true;
             Process.Start(new ProcessStartInfo(explorer, isFile ? $"/select,\"{path}\"" : $"\"{path}\"") { UseShellExecute = false });
         }
         catch (Exception ex)

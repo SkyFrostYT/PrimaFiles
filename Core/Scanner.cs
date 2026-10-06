@@ -57,6 +57,12 @@ public static class Scanner
     {
         path = path.Trim().Trim('"').Replace('/', '\\');
         if (path.Length == 2 && path[1] == ':') return path + "\\";
+        // Chemin absolu sans « .. » ni chemin relatif (dépendant du dossier courant)
+        if (path.Length > 0 && !path.StartsWith(@"\\?\", StringComparison.Ordinal) && !Unc.IsServerOnly(path))
+        {
+            try { path = Path.GetFullPath(path); }
+            catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException) { }
+        }
         if (path.Length > 3) path = path.TrimEnd('\\');
         return path;
     }
@@ -80,9 +86,9 @@ public static class Scanner
         }
         else
         {
-            if (!Directory.Exists(rootPath))
+            if (!Directory.Exists(SafePath.ForIo(rootPath)))
                 throw new DirectoryNotFoundException($"Dossier introuvable ou inaccessible : {rootPath}");
-            try { root.LastWriteUtc = Directory.GetLastWriteTimeUtc(rootPath); } catch (IOException) { } catch (UnauthorizedAccessException) { }
+            try { root.LastWriteUtc = Directory.GetLastWriteTimeUtc(SafePath.ForIo(rootPath)); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             ctx.Pending = 1;
             ctx.Queue.Add(root);
         }
@@ -254,7 +260,7 @@ public static class Scanner
                     catch (Exception ex)
                     {
                         dir.HasError = true;
-                        AddError(dir.FullPath, ex.Message);
+                        AddError(dir.FullPath, SafePath.Display(ex.Message));
                     }
 
                     if (children is not null)
@@ -290,7 +296,7 @@ public static class Scanner
             List<DirNode>? children = null;
             try
             {
-                var e = new FileSystemEnumerable<DirNode?>(path, _transform, s_enumOptions);
+                var e = new FileSystemEnumerable<DirNode?>(SafePath.ForIo(path), _transform, s_enumOptions);
                 foreach (var child in e)
                 {
                     if (child is not null) (children ??= []).Add(child);
@@ -300,7 +306,7 @@ public static class Scanner
             catch (Exception ex) when (ex is UnauthorizedAccessException or IOException or SecurityException)
             {
                 dir.HasError = true;
-                AddError(path, ex.Message);
+                AddError(path, SafePath.Display(ex.Message));
             }
 
             dir.OwnFileCount = _files;

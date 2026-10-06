@@ -73,13 +73,17 @@ public static class Safety
         return (attributes & FileAttributes.System) != 0 ? SafetyLevel.System : SafetyLevel.Normal;
     }
 
-    public static SafetyLevel ForFile(string directoryPath, string name, FileAttributes attributes)
+    public static SafetyLevel ForFile(string directoryPath, string name, FileAttributes attributes) =>
+        ForFile(DirContext.For(directoryPath), name, attributes);
+
+    /// <param name="dir">Contexte du dossier : les sous-dossiers de Windows accessibles en écriture (Windows\Temp,
+    /// Tasks…) ne sont pas considérés comme système, un programme qui s'y cache n'a pas droit au logo Windows.</param>
+    public static SafetyLevel ForFile(in DirContext dir, string name, FileAttributes attributes)
     {
         if (CriticalFiles.Contains(name) || name.StartsWith("ntuser.dat", StringComparison.OrdinalIgnoreCase))
             return SafetyLevel.Critical;
 
-        string dir = Normalize(directoryPath);
-        if (IsUnder(dir, WindowsDir))
+        if (dir.IsWindows)
             return CriticalWindowsExtensions.Contains(Path.GetExtension(name)) ? SafetyLevel.Critical : SafetyLevel.System;
 
         return (attributes & FileAttributes.System) != 0 ? SafetyLevel.System : SafetyLevel.Normal;

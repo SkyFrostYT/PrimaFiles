@@ -55,7 +55,8 @@ public sealed class DuplicateProgress
 }
 
 /// <summary>Recherche de doublons en 3 passes pour limiter les lectures (critique sur un partage réseau) :
-/// 1) même taille, 2) empreinte des 64 premiers + 64 derniers Ko, 3) SHA-256 complet.</summary>
+/// 1) même taille, 2) empreinte des 64 premiers + 64 derniers Ko, 3) SHA-256 complet.
+/// Les fichiers « en ligne uniquement » (OneDrive…) sont ignorés : les lire déclencherait leur téléchargement.</summary>
 public static class DuplicateFinder
 {
     private const int PartialChunk = 64 * 1024;
@@ -72,7 +73,7 @@ public static class DuplicateFinder
 
         // Passe 1 : regroupement par taille
         var sameSize = candidates
-            .Where(f => f.Size >= minSize && f.Size > 0)
+            .Where(f => f.Size >= minSize && f.Size > 0 && !SafePath.IsCloudOnly(f.Attributes))
             .GroupBy(f => f.Size)
             .Where(g => g.Skip(1).Any())
             .SelectMany(g => g)
@@ -125,7 +126,7 @@ public static class DuplicateFinder
         byte[] buffer = ArrayPool<byte>.Shared.Rent(ReadBuffer);
         try
         {
-            using var fs = new FileStream(path, new FileStreamOptions
+            using var fs = new FileStream(SafePath.ForIo(path), new FileStreamOptions
             {
                 Mode = FileMode.Open,
                 Access = FileAccess.Read,

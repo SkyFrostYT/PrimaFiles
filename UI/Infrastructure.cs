@@ -178,6 +178,11 @@ public static class AppData
 
     public static string File(string name) => Path.Combine(Dir, name);
 
+    /// <summary>En mode administrateur, rien n'est écrit dans le profil : ce dossier appartient à l'utilisateur, un
+    /// programme malveillant non privilégié pourrait y placer un lien (jonction, lien symbolique) vers un fichier
+    /// système et faire écraser ce dernier par le processus administrateur. Les réglages restent lisibles.</summary>
+    public static bool CanWrite => !Elevation.IsElevated;
+
     private static string Init()
     {
         string local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
@@ -185,7 +190,7 @@ public static class AppData
         string legacy = Path.Combine(local, "StorageScanner");
         try
         {
-            if (!Directory.Exists(dir) && Directory.Exists(legacy))
+            if (CanWrite && !Directory.Exists(dir) && Directory.Exists(legacy))
             {
                 Directory.CreateDirectory(dir);
                 foreach (var f in Directory.EnumerateFiles(legacy, "*.txt"))
@@ -206,13 +211,15 @@ public static class RecentStore
 
     public static IReadOnlyList<string> Load()
     {
-        try { return File.Exists(FilePath) ? File.ReadAllLines(FilePath).Where(l => l.Length > 0).Take(Max).ToList() : []; }
+        // Lecture paresseuse et bornée : un fichier gonflé à dessein ne peut pas saturer la mémoire
+        try { return File.Exists(FilePath) ? File.ReadLines(FilePath).Where(l => l.Length is > 0 and <= 32_767).Take(Max).ToList() : []; }
         catch (IOException) { return []; }
         catch (UnauthorizedAccessException) { return []; }
     }
 
     public static void Save(IEnumerable<string> paths)
     {
+        if (!AppData.CanWrite) return;
         try
         {
             Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
