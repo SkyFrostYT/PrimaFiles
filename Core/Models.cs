@@ -91,7 +91,7 @@ public sealed class FileEntry
     public bool IsSuspectDanger => Suspicion.Level == SuspicionLevel.Danger;
     public bool IsSuspectWarning => Suspicion.Level == SuspicionLevel.Warning;
     public string? SuspicionText => Suspicion.IsSuspect
-        ? $"⚠ ATTENTION — {SuspicionRules.LevelText(Suspicion.Level)} : {SuspicionRules.Describe(Suspicion.Reasons)}"
+        ? Loc.F("suspicionTip", SuspicionRules.LevelText(Suspicion.Level), SuspicionRules.Describe(Suspicion.Reasons))
         : null;
 
     public string DirectoryPath => Dir.FullPath;

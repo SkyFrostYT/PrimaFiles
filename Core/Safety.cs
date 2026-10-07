@@ -91,8 +91,8 @@ public static class Safety
 
     public static string? Describe(SafetyLevel level) => level switch
     {
-        SafetyLevel.Critical => "Ne pas supprimer : élément indispensable au fonctionnement de Windows ou des applications",
-        SafetyLevel.System => "Élément système Windows : à ne modifier qu'en connaissance de cause",
+        SafetyLevel.Critical => Loc.T("safetyCritical"),
+        SafetyLevel.System => Loc.T("safetySystem"),
         _ => null,
     };
 

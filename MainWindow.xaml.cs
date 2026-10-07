@@ -28,7 +28,12 @@ public partial class MainWindow : Window
         _vm.PropertyChanged += Vm_PropertyChanged;
         Treemap.NodeClicked += node => _vm.ShowInTree(node);
         ThemeManager.Changed += Treemap.InvalidateVisual;
-        Closed += (_, _) => ThemeManager.Changed -= Treemap.InvalidateVisual;
+        Loc.Changed += OnLanguageChanged;
+        Closed += (_, _) =>
+        {
+            ThemeManager.Changed -= Treemap.InvalidateVisual;
+            Loc.Changed -= OnLanguageChanged;
+        };
         Closing += (_, _) => _vm.CancelAll();
         StateChanged += (_, _) => UpdateWindowState();
         SourceInitialized += (_, _) => EnableRoundedCorners();
@@ -40,6 +45,33 @@ public partial class MainWindow : Window
             PathBox.CaretIndex = PathBox.Text.Length;
             if (_vm.StartScanOnLoad && _vm.ScanCommand.CanExecute(null)) _vm.ScanCommand.Execute(null);
         };
+    }
+
+    // ---- Langue ----
+
+    private static readonly (string Code, string Name)[] LanguageNames =
+        [("fr", "Français"), ("en", "English"), ("es", "Español"), ("de", "Deutsch")];
+
+    private void LanguageButton_Click(object sender, RoutedEventArgs e)
+    {
+        var menu = new ContextMenu { PlacementTarget = LanguageButton, Placement = PlacementMode.Bottom };
+        foreach (var (code, name) in LanguageNames)
+        {
+            var item = new MenuItem { Header = name, IsCheckable = true, IsChecked = code == Loc.Current };
+            item.Click += (_, _) =>
+            {
+                Loc.Set(code);
+                SettingsStore.SetString("language", code);
+            };
+            menu.Items.Add(item);
+        }
+        menu.IsOpen = true;
+    }
+
+    private void OnLanguageChanged()
+    {
+        UpdateWindowState(); // info-bulle Agrandir / Restaurer
+        Treemap.Refresh();   // légende de la carte
     }
 
     // ---- Raccourcis clavier ----
@@ -200,7 +232,7 @@ public partial class MainWindow : Window
     {
         bool max = WindowState == WindowState.Maximized;
         MaxButton.Content = max ? "\xE923" : "\xE922";
-        MaxButton.ToolTip = max ? "Restaurer" : "Agrandir";
+        MaxButton.ToolTip = Loc.T(max ? "restore" : "maximize");
         // Une fenêtre sans cadre natif déborde de l'écran une fois agrandie : on compense la bordure.
         RootBorder.Padding = max ? MaximizedInset() : new Thickness(0);
     }
@@ -424,7 +456,7 @@ public partial class MainWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Explorateur", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(ex.Message, Loc.T("explorer"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -435,7 +467,7 @@ public partial class MainWindow : Window
         if (path is null || !Path.IsPathFullyQualified(path)) return;
         if (SafePath.IsAmbiguousPath(path)) path = SafePath.NearestUnambiguousFolder(path); // Windows ouvrirait un autre élément
         if (!SHObjectProperties(new WindowInteropHelper(this).Handle, SHOP_FILEPATH, path, null))
-            MessageBox.Show(this, "Impossible d'afficher les propriétés de cet élément.", "Propriétés", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(this, Loc.T("propertiesFailed"), Loc.T("properties"), MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private const uint SHOP_FILEPATH = 2;
@@ -476,7 +508,7 @@ public partial class MainWindow : Window
         AvResult r;
         try { r = await _vm.CheckFileAsync(path); }
         finally { Mouse.OverrideCursor = null; }
-        MessageBox.Show(this, $"{Path.GetFileName(path)}\n\n{r.Message}", "Vérification antivirus", MessageBoxButton.OK,
+        MessageBox.Show(this, $"{Path.GetFileName(path)}\n\n{r.Message}", Loc.T("avDialogTitle"), MessageBoxButton.OK,
             r.Verdict switch
             {
                 AvVerdict.Threat => MessageBoxImage.Error,

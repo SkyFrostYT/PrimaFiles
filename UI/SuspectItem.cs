@@ -18,7 +18,7 @@ public sealed class SuspectItem(SuspiciousFile file) : ObservableObject
     public string LevelText => SuspicionRules.LevelText(File.Suspicion.Level);
     public string ReasonsText => File.ReasonsText;
 
-    private string _avText = "Non vérifié";
+    private string _avText = Loc.T("avNotChecked");
     public string AvText { get => _avText; private set => Set(ref _avText, value); }
 
     private Brush? _avBrush;
@@ -30,7 +30,7 @@ public sealed class SuspectItem(SuspiciousFile file) : ObservableObject
     public void SetChecking()
     {
         IsChecking = true;
-        AvText = "Analyse en cours…";
+        AvText = Loc.T("avScanning");
         AvBrush = null;
     }
 

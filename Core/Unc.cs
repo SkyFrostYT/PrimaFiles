@@ -50,7 +50,7 @@ public static class Unc
         try
         {
             if (status != 0)
-                throw new IOException($"Impossible de lister les partages de {server} (code {status}).");
+                throw new IOException(Loc.F("sharesFailed", server, status));
             int size = Marshal.SizeOf<ShareInfo1>();
             for (int i = 0; i < read; i++)
             {

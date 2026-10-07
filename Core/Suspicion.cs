@@ -362,24 +362,24 @@ public static class SuspicionRules
     public static string Describe(SuspicionReason r)
     {
         var parts = new List<string>(4);
-        if (r.HasFlag(SuspicionReason.HiddenCharacters)) parts.Add("caractères invisibles qui inversent l'affichage du nom (vraie extension masquée)");
-        if (r.HasFlag(SuspicionReason.DoubleExtension)) parts.Add("double extension : se fait passer pour un document alors que c'est un programme");
-        if (r.HasFlag(SuspicionReason.RansomwareExtension)) parts.Add("extension typique d'un fichier chiffré par un rançongiciel");
-        if (r.HasFlag(SuspicionReason.RansomNote)) parts.Add("ressemble à une demande de rançon");
-        if (r.HasFlag(SuspicionReason.SystemImpersonation)) parts.Add("porte le nom d'un programme de Windows mais se trouve hors du dossier Windows");
-        if (r.HasFlag(SuspicionReason.RiskyFileType)) parts.Add("type de fichier souvent utilisé par les virus (script / économiseur d'écran)");
-        if (r.HasFlag(SuspicionReason.RiskyLocation)) parts.Add("situé dans un dossier à risque (Temp, Téléchargements, Corbeille, Public, Démarrage)");
-        if (r.HasFlag(SuspicionReason.Startup)) parts.Add("se lance automatiquement au démarrage de Windows");
-        if (r.HasFlag(SuspicionReason.HiddenExecutable)) parts.Add("programme caché hors des dossiers d'applications");
-        if (r.HasFlag(SuspicionReason.SystemAttribute)) parts.Add("programme marqué « fichier système » hors du dossier Windows (camouflage)");
-        if (r.HasFlag(SuspicionReason.AmbiguousName)) parts.Add("nom piégé (point ou espace final, nom réservé) : Windows le confond avec un autre fichier");
+        if (r.HasFlag(SuspicionReason.HiddenCharacters)) parts.Add(Loc.T("rHidden"));
+        if (r.HasFlag(SuspicionReason.DoubleExtension)) parts.Add(Loc.T("rDouble"));
+        if (r.HasFlag(SuspicionReason.RansomwareExtension)) parts.Add(Loc.T("rRansomExt"));
+        if (r.HasFlag(SuspicionReason.RansomNote)) parts.Add(Loc.T("rRansomNote"));
+        if (r.HasFlag(SuspicionReason.SystemImpersonation)) parts.Add(Loc.T("rImpersonation"));
+        if (r.HasFlag(SuspicionReason.RiskyFileType)) parts.Add(Loc.T("rRiskyType"));
+        if (r.HasFlag(SuspicionReason.RiskyLocation)) parts.Add(Loc.T("rRiskyLocation"));
+        if (r.HasFlag(SuspicionReason.Startup)) parts.Add(Loc.T("rStartup"));
+        if (r.HasFlag(SuspicionReason.HiddenExecutable)) parts.Add(Loc.T("rHiddenExe"));
+        if (r.HasFlag(SuspicionReason.SystemAttribute)) parts.Add(Loc.T("rSystemAttr"));
+        if (r.HasFlag(SuspicionReason.AmbiguousName)) parts.Add(Loc.T("rAmbiguous"));
         return string.Join(" · ", parts);
     }
 
     public static string LevelText(SuspicionLevel level) => level switch
     {
-        SuspicionLevel.Danger => "Suspect",
-        SuspicionLevel.Warning => "À vérifier",
+        SuspicionLevel.Danger => Loc.T("levelDanger"),
+        SuspicionLevel.Warning => Loc.T("levelWarning"),
         _ => "",
     };
 }

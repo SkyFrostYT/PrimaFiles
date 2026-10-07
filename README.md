@@ -76,6 +76,7 @@ Remove-Item $cer
 
 - **Interface moderne** : barre de titre personnalisée (réduire / agrandir / fermer, coins arrondis Windows 11), accueil avec les lecteurs disponibles, indicateurs mis à jour en direct pendant l'analyse.
 - **Thème clair / sombre** : bouton soleil / lune dans la barre de titre, choix mémorisé.
+- **4 langues** : français, anglais, espagnol, allemand — bouton 🌐 de la barre de titre, changement immédiat sans redémarrer, choix mémorisé (par défaut : langue de Windows). Messages, exports CSV et unités (Ko / KB) suivent la langue choisie.
 - **Carte des volumes** (bandeau du bas, comme WinDirStat / TreeSize) : chaque bloc est proportionnel à l'espace occupé. Survol : détail · clic : ligne correspondante dans l'arborescence · double-clic : zoom · clic droit : remonter.
 - **Arborescence** dans l'ordre de l'Explorateur Windows (tri naturel), ou triée par taille, nombre de fichiers ou date. Barres vert / jaune / rouge selon la part occupée ; vrai taux d'occupation du volume (quota inclus) sur la ligne racine.
 - **Repères** : logo Windows = élément système · triangle = à ne pas supprimer · œil barré = dossier inaccessible.

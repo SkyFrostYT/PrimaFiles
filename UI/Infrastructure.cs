@@ -235,6 +235,10 @@ public static class SettingsStore
         Values.TryGetValue(key, out var v) && double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out double x)
         && double.IsFinite(x) ? Math.Clamp(x, min, max) : fallback;
 
+    public static string? GetString(string key) => Values.TryGetValue(key, out var v) && v.Length is > 0 and < 100 ? v : null;
+
+    public static void SetString(string key, string value) => Set(key, value);
+
     public static bool GetBool(string key, bool fallback) =>
         Values.TryGetValue(key, out var v) && bool.TryParse(v, out bool b) ? b : fallback;
 

@@ -80,7 +80,7 @@ public static class DuplicateFinder
             .ToList();
 
         // Passe 2 : empreinte partielle
-        progress.StartStage("Empreinte partielle", sameSize.Count, sameSize.Sum(f => Math.Min(f.Size, 2L * PartialChunk)));
+        progress.StartStage(Loc.T("dupStagePartial"), sameSize.Count, sameSize.Sum(f => Math.Min(f.Size, 2L * PartialChunk)));
         var partial = new ConcurrentDictionary<FileEntry, string>();
         Parallel.ForEach(sameSize, po, f =>
         {
@@ -102,7 +102,7 @@ public static class DuplicateFinder
         }
 
         // Passe 3 : SHA-256 complet
-        progress.StartStage("Empreinte complète", needFull.Count, needFull.Sum(f => f.Size));
+        progress.StartStage(Loc.T("dupStageFull"), needFull.Count, needFull.Sum(f => f.Size));
         var full = new ConcurrentDictionary<FileEntry, string>();
         Parallel.ForEach(needFull, po, f =>
         {

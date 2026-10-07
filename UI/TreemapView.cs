@@ -146,6 +146,9 @@ public sealed class TreemapView : FrameworkElement
 
     public void ZoomRoot() => ZoomTo(Root);
 
+    /// <summary>Redessine la carte et sa légende (changement de langue).</summary>
+    public void Refresh() => _ = RebuildAsync();
+
     private void OnSelectedChanged()
     {
         var sel = SelectedNode;
@@ -258,7 +261,7 @@ public sealed class TreemapView : FrameworkElement
 
         if (_bitmap is null)
         {
-            var text = new FormattedText(Root is null ? "La carte des volumes s'affichera ici après l'analyse." : "Aucune donnée à afficher.",
+            var text = new FormattedText(Root is null ? Loc.T("treemapEmpty") : Loc.T("treemapNoData"),
                 CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Segoe UI"), 13,
                 TryFindResource("FaintTextBr") as Brush ?? Brushes.Gray, VisualTreeHelper.GetDpi(this).PixelsPerDip);
             dc.DrawText(text, new Point((ActualWidth - text.Width) / 2, (ActualHeight - text.Height) / 2));
@@ -310,10 +313,10 @@ public sealed class TreemapView : FrameworkElement
         }
         long size = it.IsFiles ? (it.FileIndex == FileList.RestIndex ? it.RestSize : it.Node.OwnFilesSize) : it.Node.TotalSize;
         long files = it.IsFiles ? it.Node.OwnFileCount : it.Node.TotalFiles;
-        string label = it.FileIndex == FileList.RestIndex ? $"Autres petits fichiers dans {it.Node.FullPath}"
-            : it.IsFiles ? $"Fichiers dans {it.Node.FullPath}"
+        string label = it.FileIndex == FileList.RestIndex ? Loc.F("treemapSmallFiles", it.Node.FullPath)
+            : it.IsFiles ? Loc.F("treemapFilesIn", it.Node.FullPath)
             : it.Node.FullPath;
-        string count = it.FileIndex == FileList.RestIndex ? "" : $"   ·   {files:N0} fichier(s)";
+        string count = it.FileIndex == FileList.RestIndex ? "" : "   ·   " + Loc.F("nFiles", files);
         return $"{label}   ·   {Format.Bytes(size)}   ·   {size * 100.0 / total:0.0} %{count}";
     }
 
@@ -452,13 +455,13 @@ public sealed class TreemapView : FrameworkElement
                 {
                     c = kids[i].IsFiles ? FilesColor : Palette[colorIndex++ % Palette.Length];
                     if (Legend.Count < LegendMax)
-                        Legend.Add(new LegendEntry(kids[i].IsFiles ? "Fichiers à la racine" : kids[i].Node.Name, kids[i].Size, c));
+                        Legend.Add(new LegendEntry(kids[i].IsFiles ? Loc.T("treemapRootFiles") : kids[i].Node.Name, kids[i].Size, c));
                     else
                         others += kids[i].Size;
                 }
                 Recurse(kids[i], rects[i], rect, depth + 1, surface, h * ScaleFactor, c);
             }
-            if (depth == 0 && others > 0) Legend.Add(new LegendEntry("Autres", others, 0xD1D5DB));
+            if (depth == 0 && others > 0) Legend.Add(new LegendEntry(Loc.T("treemapOthers"), others, 0xD1D5DB));
         }
 
         /// <summary>Bloc des fichiers d'un dossier : détaillé fichier par fichier si la liste est en cache,

@@ -16,7 +16,7 @@ public sealed class FolderFileItem(string name, long size, DateTime lastWriteUtc
     public bool IsSuspectDanger => Suspicion.Level == SuspicionLevel.Danger;
     public bool IsSuspectWarning => Suspicion.Level == SuspicionLevel.Warning;
     public string? SuspicionText => Suspicion.IsSuspect
-        ? $"⚠ ATTENTION — {SuspicionRules.LevelText(Suspicion.Level)} : {SuspicionRules.Describe(Suspicion.Reasons)}"
+        ? Loc.F("suspicionTip", SuspicionRules.LevelText(Suspicion.Level), SuspicionRules.Describe(Suspicion.Reasons))
         : null;
 
     public string Name { get; } = name;
@@ -37,8 +37,8 @@ public sealed class DriveItem(string root, string title, string detail, double u
     public string Root { get; } = root;
     public string Title { get; } = title;
     public string Detail { get; } = detail;
-    public string Kind => isNetwork ? "Lecteur réseau" : "Disque local";
-    public string ToolTip => $"Analyser {Root}";
+    public string Kind => Loc.T(isNetwork ? "networkDrive" : "localDisk");
+    public string ToolTip => Loc.F("scanX", Root);
     public double UsedPercent { get; } = usedPercent;
     public string Icon => isNetwork ? "\xE8CE" : "\xEDA2";
     public string UsedText => $"{UsedPercent:0} %";
@@ -87,11 +87,11 @@ public sealed class MainViewModel : ObservableObject
         _ = Task.Run(AntivirusEngine.Detect).ContinueWith(t => dispatcher.BeginInvoke(() =>
         {
             _av = t.Result;
-            AvName = _av is null
-                ? "Aucun antivirus en ligne de commande détecté"
-                : $"Vérification par : {_av.Name}";
+            _avDetected = true;
+            OnPropertyChanged(nameof(AvName));
             CommandManager.InvalidateRequerySuggested();
         }), TaskScheduler.Default);
+        Loc.Changed += OnLanguageChanged;
         ThemeManager.Changed += () =>
         {
             OnPropertyChanged(nameof(ThemeGlyph));
@@ -100,9 +100,7 @@ public sealed class MainViewModel : ObservableObject
         if (Elevation.IsElevated)
         {
             bool backup = Elevation.EnableBackupPrivilege();
-            _statusText = backup
-                ? "Mode administrateur · lecture étendue activée (privilège de sauvegarde)"
-                : "Mode administrateur";
+            _statusText = Loc.T(backup ? "adminStatusBackup" : "adminStatus");
         }
         _ = LoadDrivesAsync();
     }
@@ -130,8 +128,8 @@ public sealed class MainViewModel : ObservableObject
     private AntivirusEngine? _av;
     private CancellationTokenSource? _avCts;
 
-    private string _avName = "Recherche de l'antivirus…";
-    public string AvName { get => _avName; private set => Set(ref _avName, value); }
+    private bool _avDetected;
+    public string AvName => !_avDetected ? Loc.T("avSearching") : _av is null ? Loc.T("avNone") : Loc.F("avBy", _av.Name);
 
     private IReadOnlyList<SuspectItem> _suspects = [];
     public IReadOnlyList<SuspectItem> Suspects
@@ -149,15 +147,14 @@ public sealed class MainViewModel : ObservableObject
 
     public bool HasSuspects => Suspects.Count > 0;
     public bool NoSuspects => Result is not null && Suspects.Count == 0;
-    public string SuspectsHeader => Suspects.Count > 0 ? $"Suspects ({Suspects.Count:N0})" : "Suspects";
+    public string SuspectsHeader => Suspects.Count > 0 ? $"{Loc.T("suspectsHeader")} ({Suspects.Count:N0})" : Loc.T("suspectsHeader");
     public string SuspectsSummary
     {
         get
         {
             int danger = Suspects.Count(s => s.IsDanger);
             int warn = Suspects.Count - danger;
-            return $"{danger:N0} fichier(s) suspect(s) et {warn:N0} à vérifier. Ces fichiers présentent des signes souvent associés aux "
-                   + "logiciels malveillants, ce qui n'est pas une preuve : faites-les vérifier par l'antivirus avant toute action.";
+            return Loc.F("suspectsSummary", danger, warn);
         }
     }
 
@@ -189,14 +186,14 @@ public sealed class MainViewModel : ObservableObject
             {
                 if (_avCts.IsCancellationRequested) break;
                 item.SetChecking();
-                StatusText = $"Vérification antivirus {++done}/{items.Count} : {item.Name}";
+                StatusText = Loc.F("avChecking", ++done, items.Count, item.Name);
                 var r = await _av.ScanAsync(item.FullPath, _avCts.Token);
                 item.SetResult(r);
                 if (r.Verdict == AvVerdict.Threat) threats++;
             }
             StatusText = threats > 0
-                ? $"⚠ {threats} MENACE(S) CONFIRMÉE(S) par {_av.Name} — consultez votre antivirus ou votre service informatique"
-                : $"Vérification terminée : aucune menace détectée par {_av.Name} sur {done} fichier(s)";
+                ? Loc.F("avThreats", threats, _av.Name)
+                : Loc.F("avDone", _av.Name, done);
         }
         finally
         {
@@ -207,14 +204,61 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Vérification d'un fichier quelconque (menu contextuel).</summary>
     public Task<AvResult> CheckFileAsync(string path) =>
         _av is null
-            ? Task.FromResult(new AvResult(AvVerdict.Error, "Aucun antivirus utilisable en ligne de commande n'a été trouvé sur ce poste."))
+            ? Task.FromResult(new AvResult(AvVerdict.Error, Loc.T("avNoneFile")))
             : _av.ScanAsync(path);
 
+    // ---- Textes du résultat (recalculés au changement de langue) ----
+
+    private VolumeSpace? _volume;
+    private double? _rootPercent;
+    private bool _showScanSummary; // la barre d'état affiche le bilan de l'analyse (et non un autre message)
+
+    private string? VolumeInfoText() => _volume is { } v
+        ? Loc.F("volumeInfo", Format.Bytes(v.Used), Format.Bytes(v.Total), v.UsedPercent, Format.Bytes(v.Free)) : null;
+
+    private void UpdateResultTexts()
+    {
+        if (Result is not { } r) return;
+        KpiSize = Format.Bytes(r.Root.TotalSize);
+        KpiSizeSub = _volume is { } v ? Loc.F("volumeShare", _rootPercent, Format.Bytes(v.Total)) : "";
+        if (_showScanSummary)
+        {
+            StatusText = Loc.T(r.Cancelled ? "scanPartial" : "scanDone")
+                         + " · " + Loc.F("filesPerSec", r.Root.TotalFiles / Math.Max(r.Duration.TotalSeconds, 0.001))
+                         + (r.Suspicious.Count > 0 ? Loc.F("scanSuspects", r.Suspicious.Count) : "");
+            _showScanSummary = true; // StatusText vient de remettre l'indicateur à faux
+        }
+    }
+
+    // ---- Langue ----
+
+    public string LanguageCode => Loc.Current.ToUpperInvariant();
+
+    /// <summary>Changement de langue à chaud : les textes calculés sont réévalués, les listes déjà affichées
+    /// régénérées et les messages d'état remis dans la nouvelle langue.</summary>
+    private void OnLanguageChanged()
+    {
+        OnPropertyChanged(string.Empty); // toutes les propriétés calculées (en-têtes, info-bulles, résumés…)
+
+        if (!IsBusy && Result is null) StatusText = Loc.T("ready");
+        else if (!IsBusy) UpdateResultTexts();
+        if (!IsFindingDuplicates && Duplicates.Count == 0)
+            DupStatus = Result is { } r ? Loc.F("dupCandidates", r.DuplicateCandidates.Count, Format.Bytes(r.DuplicateMinSize)) : Loc.T("dupIdle");
+        FolderSearchStatus = "";
+        _ = LoadFolderFilesAsync(SelectedTreeRow);
+        _ = RefreshStaleFoldersAsync();
+        _ = LoadDrivesAsync();
+
+        // Lignes déjà générées : leurs textes (noms, info-bulles, raisons) sont recalculés
+        foreach (var list in new System.Collections.IEnumerable?[] { Tree.Rows, TopFiles, Extensions, Errors, Duplicates, Suspects, StaleFolders })
+            if (list is not null) System.Windows.Data.CollectionViewSource.GetDefaultView(list)?.Refresh();
+    }
+
     public bool IsElevated => Elevation.IsElevated;
-    public string AppVersionText { get; } = "PrimaFiles " + Installation.CurrentVersion.ToString(3)
-        + (Installation.IsRunningInstalled ? "" : " (non installé)");
+    public string AppVersionText => "PrimaFiles " + Installation.CurrentVersion.ToString(3)
+        + (Installation.IsRunningInstalled ? "" : Loc.T("notInstalled"));
     public string ThemeGlyph => ThemeManager.IsDark ? "\xE706" : "\xE708"; // soleil / lune
-    public string ThemeTooltip => ThemeManager.IsDark ? "Passer au thème clair" : "Passer au thème sombre";
+    public string ThemeTooltip => Loc.T(ThemeManager.IsDark ? "themeToLight" : "themeToDark");
 
     /// <summary>Chemin transmis au lancement : relance en administrateur (--path "…") ou menu « Analyser avec
     /// PrimaFiles » de l'Explorateur (--scan "…", l'analyse démarre aussitôt).</summary>
@@ -308,8 +352,16 @@ public sealed class MainViewModel : ObservableObject
     public bool ShowWelcome => Result is null && !IsScanning;
     public bool ShowResults => Result is not null;
 
-    private string _statusText = "Prêt";
-    public string StatusText { get => _statusText; private set => Set(ref _statusText, value); }
+    private string _statusText = Loc.T("ready");
+    public string StatusText
+    {
+        get => _statusText;
+        private set
+        {
+            _showScanSummary = false;
+            Set(ref _statusText, value);
+        }
+    }
 
     private string _progressText = "";
     public string ProgressText { get => _progressText; private set => Set(ref _progressText, value); }
@@ -362,8 +414,8 @@ public sealed class MainViewModel : ObservableObject
     public IReadOnlyList<FileEntry>? TopFiles => Result?.TopFiles;
     public IReadOnlyList<ExtensionStat>? Extensions => Result?.Extensions;
     public IReadOnlyList<ScanError>? Errors => Result?.Errors;
-    public string ErrorsHeader => Result is { Errors.Count: > 0 } r ? $"Erreurs ({r.Errors.Count:N0})" : "Erreurs";
-    public string TopFilesHeader => Result is { } r ? $"Les {r.TopFiles.Count:N0} plus gros fichiers" : "";
+    public string ErrorsHeader => Result is { Errors.Count: > 0 } r ? $"{Loc.T("errorsHeader")} ({r.Errors.Count:N0})" : Loc.T("errorsHeader");
+    public string TopFilesHeader => Result is { } r ? Loc.F("topFilesHeader", r.TopFiles.Count) : "";
 
     private TreeRow? _selectedTreeRow;
     public TreeRow? SelectedTreeRow
@@ -382,10 +434,10 @@ public sealed class MainViewModel : ObservableObject
     private IReadOnlyList<FolderFileItem> _folderFiles = [];
     public IReadOnlyList<FolderFileItem> FolderFiles { get => _folderFiles; private set => Set(ref _folderFiles, value); }
 
-    private string _folderFilesTitle = "Fichiers";
+    private string _folderFilesTitle = Loc.T("filesTitle");
     public string FolderFilesTitle { get => _folderFilesTitle; private set => Set(ref _folderFilesTitle, value); }
 
-    private string _folderFilesHeader = "Sélectionnez un dossier pour voir ses fichiers.";
+    private string _folderFilesHeader = Loc.T("selectFolder");
     public string FolderFilesHeader { get => _folderFilesHeader; private set => Set(ref _folderFilesHeader, value); }
 
     private IReadOnlyList<DuplicateGroup> _duplicates = [];
@@ -394,7 +446,7 @@ public sealed class MainViewModel : ObservableObject
     private DuplicateGroup? _selectedDuplicate;
     public DuplicateGroup? SelectedDuplicate { get => _selectedDuplicate; set => Set(ref _selectedDuplicate, value); }
 
-    private string _dupStatus = "Lancez la recherche pour trouver les fichiers identiques.";
+    private string _dupStatus = Loc.T("dupIdle");
     public string DupStatus { get => _dupStatus; private set => Set(ref _dupStatus, value); }
 
     private double _dupPercent;
@@ -459,9 +511,8 @@ public sealed class MainViewModel : ObservableObject
         if (!ReferenceEquals(r, Result) || years != StaleYears) return; // résultat périmé entre-temps
         StaleFolders = list;
         StaleSummary = list.Count == 0
-            ? $"Aucun dossier de 1 Mo ou plus sans modification depuis {years} an(s)."
-            : $"{list.Count:N0} dossier(s) sans aucune modification depuis {years} an(s) · {Format.Bytes(list.Sum(s => s.Size))} "
-              + "· candidats à l'archivage (vérifiez avant de déplacer ou supprimer quoi que ce soit)";
+            ? Loc.F("staleNone", years)
+            : Loc.F("staleResult", list.Count, years, Format.Bytes(list.Sum(s => s.Size)));
     }
 
     // ---- Recherche d'un dossier par son nom ----
@@ -505,7 +556,7 @@ public sealed class MainViewModel : ObservableObject
         }
         if (_searchMatches.Count == 0)
         {
-            FolderSearchStatus = "Aucun dossier trouvé";
+            FolderSearchStatus = Loc.T("searchNone");
             return;
         }
         _searchIndex = ((_searchIndex + direction) % _searchMatches.Count + _searchMatches.Count) % _searchMatches.Count;
@@ -539,7 +590,7 @@ public sealed class MainViewModel : ObservableObject
         Duplicates = [];
         ResetKpis();
         ScanTarget = "";
-        StatusText = "Prêt";
+        StatusText = Loc.T("ready");
         ProgressText = "";
         GC.Collect();
         _ = LoadDrivesAsync();
@@ -581,9 +632,9 @@ public sealed class MainViewModel : ObservableObject
                     // identique pour tous les partages d'un même NAS. Le nom du serveur n'est jamais affiché.
                     string? share = network ? Unc.ShareName(Unc.GetMappedUnc(d.Name)) : null;
                     string label = share
-                        ?? (!string.IsNullOrWhiteSpace(d.VolumeLabel) ? d.VolumeLabel : network ? "Lecteur réseau" : "Disque local");
+                        ?? (!string.IsNullOrWhiteSpace(d.VolumeLabel) ? d.VolumeLabel : Loc.T(network ? "networkDrive" : "localDisk"));
                     list.Add(new DriveItem(d.RootDirectory.FullName, $"{d.Name.TrimEnd('\\')}  {label}",
-                        $"{Format.Bytes(d.AvailableFreeSpace)} libres sur {Format.Bytes(d.TotalSize)}",
+                        Loc.F("freeOf", Format.Bytes(d.AvailableFreeSpace), Format.Bytes(d.TotalSize)),
                         d.TotalSize > 0 ? used * 100.0 / d.TotalSize : 0, network));
                 }
                 catch (IOException) { }
@@ -597,7 +648,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void Browse()
     {
-        var dlg = new OpenFolderDialog { Title = "Dossier à analyser" };
+        var dlg = new OpenFolderDialog { Title = Loc.T("browseTitle") };
         if (Directory.Exists(RootPath)) dlg.InitialDirectory = RootPath;
         if (dlg.ShowDialog() == true) RootPath = dlg.FolderName;
     }
@@ -617,7 +668,7 @@ public sealed class MainViewModel : ObservableObject
         Result = null;
         Duplicates = [];
         DupPercent = 0;
-        DupStatus = "Lancez la recherche pour trouver les fichiers identiques.";
+        DupStatus = Loc.T("dupIdle");
         GC.Collect();
 
         _scanCts = new CancellationTokenSource();
@@ -626,7 +677,7 @@ public sealed class MainViewModel : ObservableObject
         string? share = Unc.ShareName(await Task.Run(() => Unc.GetMappedUnc(path)));
         ScanTarget = path;
         IsScanning = true;
-        StatusText = "Analyse en cours…";
+        StatusText = Loc.T("scanRunning");
         _sw.Restart();
         _timer.Start();
         try
@@ -640,36 +691,32 @@ public sealed class MainViewModel : ObservableObject
             var root = r.Root;
             var volume = await Task.Run(() => VolumeSpace.TryGet(path));
             double? rootPercent = null;
-            string? rootInfo = null;
-            KpiSizeSub = "";
             if (volume is { } v)
             {
                 // Racine d'un disque ou d'un partage : occupation réelle (quota inclus). Sous-dossier : sa part du volume.
                 bool isRoot = VolumeSpace.IsVolumeRoot(path);
                 rootPercent = isRoot ? v.UsedPercent : root.TotalSize * 100.0 / v.Total;
-                rootInfo = $"Volume : {Format.Bytes(v.Used)} utilisés sur {Format.Bytes(v.Total)} ({v.UsedPercent:0.0} %) · {Format.Bytes(v.Free)} libres";
-                KpiSizeSub = $"{rootPercent:0.0} % du volume de {Format.Bytes(v.Total)}";
             }
+            _volume = volume;
+            _rootPercent = rootPercent;
             Result = r;
-            Tree.Load(root, rootPercent, rootInfo, share is null ? null : $"{root.Name}   ({share})");
-            KpiSize = Format.Bytes(root.TotalSize);
+            Tree.Load(root, rootPercent, VolumeInfoText, share is null ? null : $"{root.Name}   ({share})");
             KpiFiles = root.TotalFiles.ToString("N0");
             KpiDirs = root.TotalDirs.ToString("N0");
             KpiDuration = Format.Duration(r.Duration);
             KpiErrors = r.Errors.Count.ToString("N0");
             KpiSuspects = r.Suspicious.Count.ToString("N0");
-            StatusText = (r.Cancelled ? "Analyse interrompue — résultats partiels" : "Analyse terminée")
-                         + $" · {root.TotalFiles / Math.Max(r.Duration.TotalSeconds, 0.001):N0} fichiers/s"
-                         + (r.Suspicious.Count > 0 ? $" · ⚠ {r.Suspicious.Count:N0} fichier(s) suspect(s) : voir l'onglet Suspects" : "");
-            DupStatus = $"{r.DuplicateCandidates.Count:N0} fichiers de {Format.Bytes(r.DuplicateMinSize)} ou plus à comparer.";
+            _showScanSummary = true;
+            UpdateResultTexts();
+            DupStatus = Loc.F("dupCandidates", r.DuplicateCandidates.Count, Format.Bytes(r.DuplicateMinSize));
             if (Tree.Rows.Count > 0) RevealRowRequested?.Invoke(Tree.Rows[0], false);
         }
         catch (Exception ex)
         {
             ScanTarget = "";
             ResetKpis();
-            StatusText = "Erreur : " + ex.Message;
-            MessageBox.Show(ex.Message, "Analyse impossible", MessageBoxButton.OK, MessageBoxImage.Warning);
+            StatusText = Loc.F("errorPrefix", ex.Message);
+            MessageBox.Show(ex.Message, Loc.T("scanImpossible"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         finally
         {
@@ -688,7 +735,7 @@ public sealed class MainViewModel : ObservableObject
         if (min < r.DuplicateMinSize)
         {
             min = r.DuplicateMinSize;
-            note = $" · seuil {Format.Bytes(min)} (fixé lors de l'analyse)";
+            note = Loc.F("dupThreshold", Format.Bytes(min));
         }
 
         _dupCts = new CancellationTokenSource();
@@ -706,19 +753,18 @@ public sealed class MainViewModel : ObservableObject
             SelectedDuplicate = groups.FirstOrDefault();
             DupPercent = 100;
             DupStatus = groups.Count == 0
-                ? $"Aucun doublon trouvé ({Format.Duration(sw.Elapsed)}){note}"
-                : $"{groups.Count:N0} groupe(s) · {groups.Sum(g => g.Count):N0} fichiers · {Format.Bytes(groups.Sum(g => g.WastedSize))} récupérables"
-                  + $" · {Format.Duration(sw.Elapsed)}"
-                  + (_dupProgress.Errors > 0 ? $" · {_dupProgress.Errors:N0} illisible(s)" : "")
+                ? Loc.F("dupNone", Format.Duration(sw.Elapsed), note)
+                : Loc.F("dupResult", groups.Count, groups.Sum(g => g.Count), Format.Bytes(groups.Sum(g => g.WastedSize)), Format.Duration(sw.Elapsed))
+                  + (_dupProgress.Errors > 0 ? Loc.F("dupUnreadable", _dupProgress.Errors) : "")
                   + note;
         }
         catch (OperationCanceledException)
         {
-            DupStatus = "Recherche annulée.";
+            DupStatus = Loc.T("dupCancelled");
         }
         catch (Exception ex)
         {
-            DupStatus = "Erreur : " + ex.Message;
+            DupStatus = Loc.F("errorPrefix", ex.Message);
         }
         finally
         {
@@ -735,14 +781,14 @@ public sealed class MainViewModel : ObservableObject
         FolderFiles = [];
         if (row is null)
         {
-            FolderFilesTitle = "Fichiers";
-            FolderFilesHeader = "Sélectionnez un dossier pour voir ses fichiers.";
+            FolderFilesTitle = Loc.T("filesTitle");
+            FolderFilesHeader = Loc.T("selectFolder");
             return;
         }
 
         string path = row.FullPath;
         FolderFilesTitle = row.Node.Name;
-        FolderFilesHeader = "Chargement…";
+        FolderFilesHeader = Loc.T("loading");
         try
         {
             await Task.Delay(200, cts.Token); // anti-rebond pendant la navigation au clavier
@@ -775,15 +821,15 @@ public sealed class MainViewModel : ObservableObject
             if (cts.IsCancellationRequested) return;
             FolderFiles = items;
             FolderFilesHeader = items.Count == 0
-                ? "Aucun fichier directement dans ce dossier."
-                : $"{items.Count:N0} fichier(s) · {Format.Bytes(items.Sum(i => i.Size))}" + (items.Count >= MaxFolderFiles ? " (liste tronquée)" : "");
+                ? Loc.T("noDirectFiles")
+                : Loc.F("folderFiles", items.Count, Format.Bytes(items.Sum(i => i.Size))) + (items.Count >= MaxFolderFiles ? Loc.T("truncated") : "");
         }
         catch (OperationCanceledException)
         {
         }
         catch (Exception ex)
         {
-            if (!cts.IsCancellationRequested) FolderFilesHeader = "Erreur : " + SafePath.Display(ex.Message);
+            if (!cts.IsCancellationRequested) FolderFilesHeader = Loc.F("errorPrefix", SafePath.Display(ex.Message));
         }
     }
 
@@ -794,23 +840,23 @@ public sealed class MainViewModel : ObservableObject
 
         string defaultName = SelectedTabIndex switch
         {
-            1 => "gros-fichiers",
-            2 => "types-de-fichiers",
-            3 => "doublons",
-            4 => "fichiers-suspects",
-            5 => "erreurs",
-            6 => "dossiers-inactifs",
-            _ => "arborescence",
+            1 => Loc.T("csvBig"),
+            2 => Loc.T("csvTypes"),
+            3 => Loc.T("csvDup"),
+            4 => Loc.T("csvSuspects"),
+            5 => Loc.T("csvErrors"),
+            6 => Loc.T("csvStale"),
+            _ => Loc.T("csvTree"),
         };
         var dlg = new SaveFileDialog
         {
-            Title = "Exporter l'onglet affiché en CSV",
-            Filter = "Fichier CSV (*.csv)|*.csv",
+            Title = Loc.T("exportTitle"),
+            Filter = Loc.T("csvFilter"),
             FileName = $"{defaultName}_{DateTime.Now:yyyyMMdd_HHmm}.csv",
         };
         if (dlg.ShowDialog() != true) return;
 
-        StatusText = "Export en cours…";
+        StatusText = Loc.T("exporting");
         try
         {
             await (SelectedTabIndex switch
@@ -823,11 +869,11 @@ public sealed class MainViewModel : ObservableObject
                 6 => CsvExport.StaleAsync(StaleFolders.Select(s => (s.FullPath, s.Size, s.Files, s.NewestUtc)), dlg.FileName),
                 _ => CsvExport.TreeAsync(r.Root, dlg.FileName),
             });
-            StatusText = $"Exporté : {dlg.FileName}";
+            StatusText = Loc.F("exported", dlg.FileName);
         }
         catch (Exception ex)
         {
-            StatusText = "Échec de l'export : " + ex.Message;
+            StatusText = Loc.F("exportFailed", ex.Message);
         }
     }
 
@@ -842,14 +888,14 @@ public sealed class MainViewModel : ObservableObject
             KpiDuration = Format.Duration(_sw.Elapsed);
             KpiErrors = p.Errors.ToString("N0");
             KpiSuspects = p.Suspects.ToString("N0");
-            ProgressText = $"{p.Files / secs:N0} fichiers/s";
+            ProgressText = Loc.F("filesPerSec", p.Files / secs);
             CurrentPath = p.CurrentPath ?? "";
         }
 
         if (IsFindingDuplicates && _dupProgress is { } d)
         {
             DupPercent = d.BytesTotal > 0 ? d.BytesDone * 100.0 / d.BytesTotal : 0;
-            DupStatus = $"{d.Stage} : {d.FilesDone:N0} / {d.FilesTotal:N0} fichiers · {Format.Bytes(d.BytesDone)} / {Format.Bytes(d.BytesTotal)}";
+            DupStatus = Loc.F("dupProgress", d.Stage, d.FilesDone, d.FilesTotal, Format.Bytes(d.BytesDone), Format.Bytes(d.BytesTotal));
             StatusText = d.CurrentPath ?? "";
         }
     }

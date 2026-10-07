@@ -78,7 +78,7 @@ public static class Scanner
             // « \\serveur » : chaque partage devient un dossier de premier niveau
             var shares = Unc.GetShares(rootPath);
             if (shares.Count == 0)
-                throw new DirectoryNotFoundException($"Aucun partage accessible sur {rootPath}");
+                throw new DirectoryNotFoundException(Loc.F("noShares", rootPath));
             root.Children = shares.Select(s => new DirNode(s, root)).ToList();
             progress.AddDirectory(0, 0);
             ctx.Pending = root.Children.Count;
@@ -87,7 +87,7 @@ public static class Scanner
         else
         {
             if (!Directory.Exists(SafePath.ForIo(rootPath)))
-                throw new DirectoryNotFoundException($"Dossier introuvable ou inaccessible : {rootPath}");
+                throw new DirectoryNotFoundException(Loc.F("folderNotFound", rootPath));
             try { root.LastWriteUtc = Directory.GetLastWriteTimeUtc(SafePath.ForIo(rootPath)); } catch (IOException) { } catch (UnauthorizedAccessException) { }
             ctx.Pending = 1;
             ctx.Queue.Add(root);
@@ -199,7 +199,7 @@ public static class Scanner
     private sealed class Worker
     {
         private const int MaxErrorsPerWorker = 20_000;
-        private const string NoExtension = "(sans extension)";
+        private readonly string NoExtension = Loc.T("noExtension"); // langue choisie au moment de l'analyse
 
         private static readonly EnumerationOptions s_enumOptions = new()
         {

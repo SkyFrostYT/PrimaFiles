@@ -48,7 +48,7 @@ public sealed class TreeRow : ObservableObject
     /// <summary>Libellé de remplacement (racine d'un lecteur mappé : « U:\ (\\serveur\partage) »).</summary>
     public string? DisplayName { get; init; }
 
-    public string Name => IsFilesRow ? $"[{Node.OwnFileCount:N0} fichier(s)]" : DisplayName ?? Node.Name;
+    public string Name => IsFilesRow ? Loc.F("treeFilesRow", Node.OwnFileCount) : DisplayName ?? Node.Name;
     public long Size => IsFilesRow ? Node.OwnFilesSize : Node.TotalSize;
     public long Files => IsFilesRow ? Node.OwnFileCount : Node.TotalFiles;
     public long? Dirs => IsFilesRow ? null : Node.TotalDirs;
@@ -56,7 +56,9 @@ public sealed class TreeRow : ObservableObject
 
     /// <summary>Pour la racine : occupation réelle du volume / quota (renseignée par le modèle).</summary>
     public double? RootPercent { get; init; }
-    public string? RootInfo { get; init; }
+    /// <summary>Occupation du volume (ligne racine), recalculée à chaque affichage : suit la langue choisie.</summary>
+    public Func<string?>? RootInfoSource { get; init; }
+    public string? RootInfo => RootInfoSource?.Invoke();
 
     public double Percent => RootPercent ?? (_parentTotal > 0 ? Size * 100.0 / _parentTotal : 100);
     public string PercentText => $"{Percent:0.0} %";
@@ -75,8 +77,8 @@ public sealed class TreeRow : ObservableObject
     public Brush IconBrush => IsFilesRow ? FilesBrush : Node.HasError ? ErrorBrush : Node.IsReparsePoint ? LinkBrush : FolderBrush;
 
     public string ToolTip => RootInfo is not null ? $"{FullPath}\n{RootInfo}"
-        : Node.IsReparsePoint ? "Jonction / lien symbolique (non parcouru)"
-        : Node.HasError ? "Dossier inaccessible : accès refusé ou erreur de lecture (voir l'onglet Erreurs)"
+        : Node.IsReparsePoint ? Loc.T("treeReparse")
+        : Node.HasError ? Loc.T("treeError")
         : FullPath;
 
     public string FullPath => Node.FullPath;
@@ -92,7 +94,7 @@ public sealed class TreeRow : ObservableObject
     public bool IsSuspectDanger => SuspectCount > 0;
     public bool IsSuspectWarning => false;
     public string? SuspicionText => SuspectCount > 0
-        ? $"⚠ ATTENTION : contient {SuspectCount:N0} fichier(s) potentiellement malveillant(s) — voir l'onglet Suspects"
+        ? Loc.F("treeSuspects", SuspectCount)
         : null;
 
     private static Brush Frozen(string hex)
@@ -114,11 +116,11 @@ public sealed class TreeModel
     public TreeSortMode SortMode { get; private set; } = TreeSortMode.NameWindows;
 
     private double? _rootPercent;
-    private string? _rootInfo;
+    private Func<string?>? _rootInfo;
     private string? _rootDisplayName;
 
     /// <param name="rootPercent">Occupation réelle du volume (ou du quota) à afficher sur la ligne racine.</param>
-    public void Load(DirNode root, double? rootPercent = null, string? rootInfo = null, string? rootDisplayName = null)
+    public void Load(DirNode root, double? rootPercent = null, Func<string?>? rootInfo = null, string? rootDisplayName = null)
     {
         _root = root;
         _rootDisplayName = rootDisplayName;
@@ -184,7 +186,7 @@ public sealed class TreeModel
             Rows.ReplaceAll([]);
             return;
         }
-        var rootRow = new TreeRow(_root, 0, RowKind.Folder, _root.TotalSize) { IsExpanded = true, RootPercent = _rootPercent, RootInfo = _rootInfo, DisplayName = _rootDisplayName };
+        var rootRow = new TreeRow(_root, 0, RowKind.Folder, _root.TotalSize) { IsExpanded = true, RootPercent = _rootPercent, RootInfoSource = _rootInfo, DisplayName = _rootDisplayName };
         var list = new List<TreeRow> { rootRow };
         AppendExpanded(rootRow, list);
         Rows.ReplaceAll(list);

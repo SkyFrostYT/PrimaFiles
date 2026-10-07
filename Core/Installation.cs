@@ -86,7 +86,7 @@ public static class Installation
         foreach (var path in ShellVerbKeys)
         {
             using var verb = Registry.LocalMachine.CreateSubKey(path, writable: true);
-            verb.SetValue("", "Analyser avec PrimaFiles");
+            verb.SetValue("", Loc.T("explorerVerb"));
             verb.SetValue("Icon", $"\"{InstalledExe}\",0");
             using var command = verb.CreateSubKey("command", writable: true);
             // %V : chemin du dossier, toujours entre guillemets ; PrimaFiles ne fait que le lire (lecture seule)
@@ -129,7 +129,7 @@ public static class Installation
             link.TargetPath = InstalledExe;
             link.WorkingDirectory = Dir;
             link.IconLocation = InstalledExe + ",0";
-            link.Description = "Analyse de l'espace disque et des partages réseau";
+            link.Description = Loc.T("shortcutDescription");
             link.Save();
             Marshal.FinalReleaseComObject(link);
         }

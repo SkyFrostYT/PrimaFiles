@@ -47,7 +47,7 @@ public sealed class AntivirusEngine
 
     public async Task<AvResult> ScanAsync(string file, CancellationToken ct = default)
     {
-        if (!File.Exists(SafePath.ForIo(file))) return new AvResult(AvVerdict.Error, "Fichier introuvable (déplacé ou mis en quarantaine ?)");
+        if (!File.Exists(SafePath.ForIo(file))) return new AvResult(AvVerdict.Error, Loc.T("avNotFound"));
 
         // Nom piégé (« virus.exe. ») : passé tel quel, l'antivirus analyserait un autre fichier et le déclarerait sain.
         // On analyse alors tout le dossier qui le contient.
@@ -56,9 +56,9 @@ public sealed class AntivirusEngine
         if (SafePath.IsAmbiguousPath(file))
         {
             target = SafePath.NearestUnambiguousFolder(file);
-            note = $" — dossier analysé : {target}";
+            note = Loc.F("avFolderScanned", target);
         }
-        if (!Path.IsPathFullyQualified(target)) return new AvResult(AvVerdict.Error, "Chemin non valide");
+        if (!Path.IsPathFullyQualified(target)) return new AvResult(AvVerdict.Error, Loc.T("avInvalidPath"));
 
         var psi = new ProcessStartInfo(_exe)
         {
@@ -87,7 +87,7 @@ public sealed class AntivirusEngine
         Process? p = null;
         try
         {
-            p = Process.Start(psi) ?? throw new InvalidOperationException("Impossible de lancer l'antivirus");
+            p = Process.Start(psi) ?? throw new InvalidOperationException(Loc.T("avCannotStart"));
             var stdout = p.StandardOutput.ReadToEndAsync(CancellationToken.None);
             var stderr = p.StandardError.ReadToEndAsync(CancellationToken.None);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
@@ -99,7 +99,7 @@ public sealed class AntivirusEngine
         }
         catch (OperationCanceledException)
         {
-            return new AvResult(AvVerdict.Error, ct.IsCancellationRequested ? "Analyse interrompue" : "Délai dépassé (10 min)");
+            return new AvResult(AvVerdict.Error, ct.IsCancellationRequested ? Loc.T("avInterrupted") : Loc.T("avTimeout"));
         }
         catch (Exception ex) when (ex is System.ComponentModel.Win32Exception or InvalidOperationException or IOException)
         {
@@ -126,16 +126,16 @@ public sealed class AntivirusEngine
                 RegexOptions.IgnoreCase | RegexOptions.Multiline | RegexOptions.RightToLeft, TimeSpan.FromSeconds(2));
             if (m.Success)
                 return int.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) > 0
-                    ? new AvResult(AvVerdict.Threat, $"MENACE DÉTECTÉE par {Name}")
-                    : new AvResult(AvVerdict.Clean, $"Aucune menace ({Name})");
-            return new AvResult(AvVerdict.Error, $"Réponse inattendue de {Name} (code {exitCode})");
+                    ? new AvResult(AvVerdict.Threat, Loc.F("avThreat", Name))
+                    : new AvResult(AvVerdict.Clean, Loc.F("avClean", Name));
+            return new AvResult(AvVerdict.Error, Loc.F("avUnexpected", Name, exitCode));
         }
 
         return exitCode switch
         {
-            0 => new AvResult(AvVerdict.Clean, $"Aucune menace ({Name})"),
-            2 => new AvResult(AvVerdict.Threat, $"MENACE DÉTECTÉE par {Name}"),
-            _ => new AvResult(AvVerdict.Error, $"{Name} indisponible ou désactivé (code {exitCode})"),
+            0 => new AvResult(AvVerdict.Clean, Loc.F("avClean", Name)),
+            2 => new AvResult(AvVerdict.Threat, Loc.F("avThreat", Name)),
+            _ => new AvResult(AvVerdict.Error, Loc.F("avUnavailable", Name, exitCode)),
         };
     }
 }

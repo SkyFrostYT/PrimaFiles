@@ -6,20 +6,20 @@ namespace StorageScanner.Core;
 
 public static class Format
 {
-    private static readonly string[] Units = ["Ko", "Mo", "Go", "To", "Po"];
 
     public static string Bytes(long bytes)
     {
-        if (bytes < 1024) return $"{bytes} o";
+        if (bytes < 1024) return $"{bytes} {Loc.ByteUnit}";
+        var units = Loc.ByteUnits;
         double v = bytes;
         int i = -1;
         do
         {
             v /= 1024;
             i++;
-        } while (v >= 1024 && i < Units.Length - 1);
+        } while (v >= 1024 && i < units.Length - 1);
         string fmt = v < 10 ? "0.00" : v < 100 ? "0.0" : "0";
-        return v.ToString(fmt, CultureInfo.CurrentCulture) + " " + Units[i];
+        return v.ToString(fmt, CultureInfo.CurrentCulture) + " " + units[i];
     }
 
     public static string Duration(TimeSpan t) =>
@@ -87,18 +87,22 @@ public static class CsvExport
 
     private static StreamWriter Open(string file) => new(file, false, new UTF8Encoding(true));
 
+    /// <summary>Ligne d'en-tête dans la langue de l'interface.</summary>
+    private static string Header(params string[] keys) => string.Join(Sep, keys.Select(k => Esc(Loc.T(k))));
+
     /// <summary>Exporte tous les dossiers dans l'ordre de l'arborescence Windows.</summary>
     public static Task TreeAsync(DirNode root, string file) => Task.Run(() =>
     {
         using var w = Open(file);
-        w.WriteLine(string.Join(Sep, "Chemin", "Profondeur", "Taille (octets)", "Taille", "Fichiers", "Sous-dossiers", "Fichiers directs", "Taille fichiers directs (octets)", "Dernière modif. contenu", "Lien/Jonction", "Erreur"));
+        w.WriteLine(Header("path", "colDepth", "colBytes", "size", "files", "colSubfolders", "colDirectFiles", "colDirectBytes", "colNewest", "colLink", "error"));
+        string yes = Loc.T("yes");
         var stack = new Stack<(DirNode Node, string Path, int Depth)>();
         stack.Push((root, root.FullPath, 0));
         while (stack.Count > 0)
         {
             var (n, path, depth) = stack.Pop();
             w.WriteLine(string.Join(Sep, Esc(path), depth, n.TotalSize, Esc(Format.Bytes(n.TotalSize)), n.TotalFiles, n.TotalDirs,
-                n.OwnFileCount, n.OwnFilesSize, Date(n.NewestFileUtc), n.IsReparsePoint ? "oui" : "", n.HasError ? "oui" : ""));
+                n.OwnFileCount, n.OwnFilesSize, Date(n.NewestFileUtc), n.IsReparsePoint ? yes : "", n.HasError ? yes : ""));
             if (n.Children is { } ch)
             {
                 var sorted = ch.ToList();
@@ -111,7 +115,7 @@ public static class CsvExport
     public static Task FilesAsync(IEnumerable<FileEntry> files, string file) => Task.Run(() =>
     {
         using var w = Open(file);
-        w.WriteLine(string.Join(Sep, "Chemin", "Nom", "Extension", "Taille (octets)", "Taille", "Dernière modif."));
+        w.WriteLine(Header("path", "name", "extension", "colBytes", "size", "colModified"));
         foreach (var f in files)
             w.WriteLine(string.Join(Sep, Esc(f.FullPath), Esc(f.Name), Esc(f.Extension), f.Size, Esc(Format.Bytes(f.Size)), Date(f.LastWriteUtc)));
     });
@@ -119,7 +123,7 @@ public static class CsvExport
     public static Task ExtensionsAsync(IEnumerable<ExtensionStat> stats, string file) => Task.Run(() =>
     {
         using var w = Open(file);
-        w.WriteLine(string.Join(Sep, "Extension", "Fichiers", "Taille (octets)", "Taille", "% total", "Taille moyenne (octets)"));
+        w.WriteLine(Header("extension", "files", "colBytes", "size", "colPctTotal", "colAvgBytes"));
         foreach (var s in stats)
             w.WriteLine(string.Join(Sep, Esc(s.Extension), s.Count, s.Size, Esc(Format.Bytes(s.Size)), s.Percent.ToString("0.00", CultureInfo.CurrentCulture), s.AverageSize));
     });
@@ -127,7 +131,7 @@ public static class CsvExport
     public static Task DuplicatesAsync(IEnumerable<DuplicateGroup> groups, string file) => Task.Run(() =>
     {
         using var w = Open(file);
-        w.WriteLine(string.Join(Sep, "Groupe", "SHA-256", "Taille (octets)", "Taille", "Copies", "Espace récupérable (octets)", "Chemin", "Dernière modif."));
+        w.WriteLine(Header("colGroup", "sha256", "colBytes", "size", "copies", "colRecoverableBytes", "path", "colModified"));
         int id = 0;
         foreach (var g in groups)
         {
@@ -140,7 +144,7 @@ public static class CsvExport
     public static Task SuspectsAsync(IEnumerable<(SuspiciousFile File, string Antivirus)> items, string file) => Task.Run(() =>
     {
         using var w = Open(file);
-        w.WriteLine(string.Join(Sep, "Niveau", "Chemin", "Raisons", "Taille (octets)", "Dernière modif.", "Vérification antivirus"));
+        w.WriteLine(Header("level", "path", "colReasons", "colBytes", "colModified", "colAvCheck"));
         foreach (var (s, av) in items)
             w.WriteLine(string.Join(Sep, SuspicionRules.LevelText(s.Suspicion.Level), Esc(s.Entry.FullPath), Esc(s.ReasonsText),
                 s.Entry.Size, Date(s.Entry.LastWriteUtc), Esc(av)));
@@ -149,7 +153,7 @@ public static class CsvExport
     public static Task StaleAsync(IEnumerable<(string Path, long Size, long Files, DateTime NewestUtc)> folders, string file) => Task.Run(() =>
     {
         using var w = Open(file);
-        w.WriteLine(string.Join(Sep, "Chemin", "Taille (octets)", "Taille", "Fichiers", "Dernière modification"));
+        w.WriteLine(Header("path", "colBytes", "size", "files", "lastModified"));
         foreach (var (path, size, files, newest) in folders)
             w.WriteLine(string.Join(Sep, Esc(path), size, Esc(Format.Bytes(size)), files, Date(newest)));
     });
@@ -157,7 +161,7 @@ public static class CsvExport
     public static Task ErrorsAsync(IEnumerable<ScanError> errors, string file) => Task.Run(() =>
     {
         using var w = Open(file);
-        w.WriteLine(string.Join(Sep, "Chemin", "Erreur"));
+        w.WriteLine(Header("path", "error"));
         foreach (var e in errors) w.WriteLine(string.Join(Sep, Esc(e.Path), Esc(e.Message.ReplaceLineEndings(" "))));
     });
 }

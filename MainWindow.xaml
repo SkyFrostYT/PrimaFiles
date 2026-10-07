@@ -43,67 +43,67 @@
         </DataTemplate>
 
         <ContextMenu x:Key="FolderMenu" x:Shared="False">
-            <MenuItem Header="Ouvrir dans l'Explorateur" Click="OpenInExplorer_Click">
+            <MenuItem Header="{ui:L openInExplorer}" Click="OpenInExplorer_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+            <MenuItem Header="{ui:L copyPath}" Click="CopyPath_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Propriétés" Click="Properties_Click">
+            <MenuItem Header="{ui:L properties}" Click="Properties_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
             </MenuItem>
             <Separator />
-            <MenuItem Header="Centrer la carte sur ce dossier" Click="ZoomTreemapHere_Click">
+            <MenuItem Header="{ui:L zoomTreemapHere}" Click="ZoomTreemapHere_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xF0E2;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Analyser uniquement ce dossier" Click="ScanHere_Click">
+            <MenuItem Header="{ui:L scanThisFolder}" Click="ScanHere_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE768;" /></MenuItem.Icon>
             </MenuItem>
         </ContextMenu>
         <ContextMenu x:Key="FileMenu" x:Shared="False">
-            <MenuItem Header="Afficher dans l'Explorateur" Click="OpenInExplorer_Click">
+            <MenuItem Header="{ui:L showInExplorer}" Click="OpenInExplorer_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+            <MenuItem Header="{ui:L copyPath}" Click="CopyPath_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Propriétés" Click="Properties_Click">
+            <MenuItem Header="{ui:L properties}" Click="Properties_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Afficher dans l'arborescence" Click="ShowInTree_Click">
+            <MenuItem Header="{ui:L showInTree}" Click="ShowInTree_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" /></MenuItem.Icon>
             </MenuItem>
             <Separator />
-            <MenuItem Header="Vérifier avec l'antivirus" Click="CheckWithAv_Click">
+            <MenuItem Header="{ui:L checkWithAv}" Click="CheckWithAv_Click">
                 <MenuItem.Icon><Image Source="{StaticResource ThreatShield}" Width="15" Height="15" /></MenuItem.Icon>
             </MenuItem>
         </ContextMenu>
         <ContextMenu x:Key="StaleMenu" x:Shared="False">
-            <MenuItem Header="Ouvrir dans l'Explorateur" Click="OpenInExplorer_Click">
+            <MenuItem Header="{ui:L openInExplorer}" Click="OpenInExplorer_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Afficher dans l'arborescence" Click="ShowInTree_Click">
+            <MenuItem Header="{ui:L showInTree}" Click="ShowInTree_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+            <MenuItem Header="{ui:L copyPath}" Click="CopyPath_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Propriétés" Click="Properties_Click">
+            <MenuItem Header="{ui:L properties}" Click="Properties_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
             </MenuItem>
         </ContextMenu>
         <ContextMenu x:Key="SimpleMenu" x:Shared="False">
-            <MenuItem Header="Afficher dans l'Explorateur" Click="OpenInExplorer_Click">
+            <MenuItem Header="{ui:L showInExplorer}" Click="OpenInExplorer_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+            <MenuItem Header="{ui:L copyPath}" Click="CopyPath_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
             </MenuItem>
-            <MenuItem Header="Propriétés" Click="Properties_Click">
+            <MenuItem Header="{ui:L properties}" Click="Properties_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
             </MenuItem>
             <Separator />
-            <MenuItem Header="Vérifier avec l'antivirus" Click="CheckWithAv_Click">
+            <MenuItem Header="{ui:L checkWithAv}" Click="CheckWithAv_Click">
                 <MenuItem.Icon><Image Source="{StaticResource ThreatShield}" Width="15" Height="15" /></MenuItem.Icon>
             </MenuItem>
         </ContextMenu>
@@ -152,26 +152,33 @@
                     <!-- Mode administrateur : bouton de relance, ou badge si déjà élevé -->
                     <Button Style="{StaticResource TitleTextButton}" Command="{Binding RestartAsAdminCommand}"
                             Visibility="{Binding IsElevated, Converter={StaticResource InverseBoolToVis}}"
-                            ToolTip="Relancer en administrateur pour analyser aussi les dossiers protégés (invite UAC)">
+                            ToolTip="{ui:L adminModeTip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" FontSize="13" Foreground="{DynamicResource WarningBr}" Margin="0,0,7,0" />
-                            <TextBlock Text="Mode administrateur" FontSize="12" VerticalAlignment="Center" />
+                            <TextBlock Text="{ui:L adminMode}" FontSize="12" VerticalAlignment="Center" />
                         </StackPanel>
                     </Button>
                     <Border Background="{DynamicResource AdminBadgeBg}" CornerRadius="5" Padding="9,3" Margin="0,0,8,0" VerticalAlignment="Center"
                             Visibility="{Binding IsElevated, Converter={StaticResource BoolToVis}}"
-                            ToolTip="L'application tourne avec les droits administrateur. Les lecteurs réseau de votre session y sont reconnectés automatiquement.">
+                            ToolTip="{ui:L adminBadgeTip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" FontSize="12" Foreground="{DynamicResource WarningBr}" Margin="0,0,6,0" />
-                            <TextBlock Text="Administrateur" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBr}" />
+                            <TextBlock Text="{ui:L adminBadge}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBr}" />
                         </StackPanel>
                     </Border>
+                    <!-- Choix de la langue : Français, English, Español, Deutsch -->
+                    <Button x:Name="LanguageButton" Style="{StaticResource TitleTextButton}" Click="LanguageButton_Click" ToolTip="{ui:L language}">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock Style="{StaticResource Icon}" Text="&#xE774;" FontSize="13" Margin="0,0,6,0" />
+                            <TextBlock Text="{Binding LanguageCode}" FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center" />
+                        </StackPanel>
+                    </Button>
                     <Button Style="{StaticResource TitleBarButton}" Command="{Binding ToggleThemeCommand}" Content="{Binding ThemeGlyph}"
                             FontSize="14" ToolTip="{Binding ThemeTooltip}" />
                     <Rectangle Width="1" Height="16" Fill="{DynamicResource BorderBr}" Margin="4,0" VerticalAlignment="Center" />
-                    <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="Minimize_Click" ToolTip="Réduire" />
-                    <Button x:Name="MaxButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;" Click="Maximize_Click" ToolTip="Agrandir" />
-                    <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;" Click="Close_Click" ToolTip="Fermer" />
+                    <Button Style="{StaticResource TitleBarButton}" Content="&#xE921;" Click="Minimize_Click" ToolTip="{ui:L minimize}" />
+                    <Button x:Name="MaxButton" Style="{StaticResource TitleBarButton}" Content="&#xE922;" Click="Maximize_Click" ToolTip="{ui:L maximize}" />
+                    <Button Style="{StaticResource CloseButton}" Content="&#xE8BB;" Click="Close_Click" ToolTip="{ui:L close}" />
                 </StackPanel>
             </Grid>
 
@@ -191,13 +198,13 @@
 
                     <Grid>
                         <TextBox x:Name="PathBox" Text="{Binding RootPath, UpdateSourceTrigger=PropertyChanged}" Padding="34,0,40,0" FontSize="13.5"
-                                 Tag="Dossier local ou chemin réseau — ex.  D:\Données   ·   \\serveur\partage\dossier   ·   \\serveur (tous ses partages)"
+                                 Tag="{ui:L pathPlaceholder}"
                                  KeyDown="PathBox_KeyDown" />
                         <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" Foreground="{DynamicResource SubtleTextBr}"
                                    Margin="12,0,0,0" HorizontalAlignment="Left" IsHitTestVisible="False" />
                         <ToggleButton x:Name="HistoryToggle" Style="{StaticResource IconToggle}" HorizontalAlignment="Right" Margin="0,0,3,0"
                                       Height="28" MinWidth="30" Padding="6,0" BorderThickness="0" Background="Transparent"
-                                      ToolTip="Analyses récentes"
+                                      ToolTip="{ui:L recentTip}"
                                       IsHitTestVisible="{Binding IsOpen, ElementName=HistoryPopup, Converter={StaticResource Not}}">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE81C;" FontSize="13" />
                         </ToggleButton>
@@ -209,7 +216,7 @@
                                     <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.16" />
                                 </Border.Effect>
                                 <StackPanel>
-                                    <TextBlock Text="ANALYSES RÉCENTES" Style="{StaticResource Subtle}" FontSize="10.5" FontWeight="SemiBold" Margin="10,6,0,4" />
+                                    <TextBlock Text="{ui:L recentUpper}" Style="{StaticResource Subtle}" FontSize="10.5" FontWeight="SemiBold" Margin="10,6,0,4" />
                                     <ListBox x:Name="HistoryList" ItemsSource="{Binding RecentPaths}" BorderThickness="0" Background="Transparent"
                                              ItemContainerStyle="{StaticResource HistoryItem}" MaxHeight="320"
                                              ScrollViewer.HorizontalScrollBarVisibility="Disabled"
@@ -228,43 +235,43 @@
                         </Popup>
                     </Grid>
 
-                    <Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding BrowseCommand}" ToolTip="Choisir un dossier">
+                    <Button Grid.Column="1" Margin="8,0,0,0" Command="{Binding BrowseCommand}" ToolTip="{ui:L browseTip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE838;" Margin="0,0,8,0" />
-                            <TextBlock Text="Parcourir" />
+                            <TextBlock Text="{ui:L browse}" />
                         </StackPanel>
                     </Button>
 
                     <Button Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource AccentButton}" Command="{Binding ScanCommand}" MinWidth="120"
-                            Visibility="{Binding IsScanning, Converter={StaticResource InverseBoolToVis}}" ToolTip="Lancer l'analyse (Entrée)">
+                            Visibility="{Binding IsScanning, Converter={StaticResource InverseBoolToVis}}" ToolTip="{ui:L scanTip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE768;" FontSize="12" Margin="0,0,8,0" />
-                            <TextBlock Text="Analyser" />
+                            <TextBlock Text="{ui:L scan}" />
                         </StackPanel>
                     </Button>
                     <Button Grid.Column="2" Margin="8,0,0,0" Style="{StaticResource DangerButton}" Command="{Binding CancelCommand}" MinWidth="120"
                             Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE71A;" FontSize="12" Margin="0,0,8,0" />
-                            <TextBlock Text="Arrêter" />
+                            <TextBlock Text="{ui:L stop}" />
                         </StackPanel>
                     </Button>
 
                     <Rectangle Grid.Column="3" Width="1" Fill="{DynamicResource BorderBr}" Margin="14,4" />
 
-                    <Button Grid.Column="4" Command="{Binding ExportCommand}" Margin="0" ToolTip="Exporter l'onglet affiché au format CSV (Excel)">
+                    <Button Grid.Column="4" Command="{Binding ExportCommand}" Margin="0" ToolTip="{ui:L exportTip}">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xEDE1;" Margin="0,0,8,0" />
-                            <TextBlock Text="Exporter" />
+                            <TextBlock Text="{ui:L export}" />
                         </StackPanel>
                     </Button>
 
                     <ToggleButton x:Name="TreemapToggle" Grid.Column="5" Style="{StaticResource IconToggle}" Margin="8,0,0,0" IsChecked="True"
-                                  ToolTip="Afficher / masquer la carte des volumes" Checked="TreemapToggle_Changed" Unchecked="TreemapToggle_Changed">
+                                  ToolTip="{ui:L toggleTreemapTip}" Checked="TreemapToggle_Changed" Unchecked="TreemapToggle_Changed">
                         <TextBlock Style="{StaticResource Icon}" Text="&#xF0E2;" />
                     </ToggleButton>
 
-                    <ToggleButton x:Name="OptionsToggle" Grid.Column="6" Style="{StaticResource IconToggle}" Margin="8,0,0,0" ToolTip="Paramètres"
+                    <ToggleButton x:Name="OptionsToggle" Grid.Column="6" Style="{StaticResource IconToggle}" Margin="8,0,0,0" ToolTip="{ui:L settings}"
                                   IsHitTestVisible="{Binding IsOpen, ElementName=OptionsPopup, Converter={StaticResource Not}}">
                         <TextBlock Style="{StaticResource Icon}" Text="&#xE713;" />
                     </ToggleButton>
@@ -276,29 +283,29 @@
                                 <DropShadowEffect BlurRadius="14" ShadowDepth="3" Opacity="0.16" />
                             </Border.Effect>
                             <StackPanel>
-                                <TextBlock Text="Paramètres d'analyse" Style="{StaticResource SectionTitle}" Margin="0,0,0,14" />
+                                <TextBlock Text="{ui:L settingsTitle}" Style="{StaticResource SectionTitle}" Margin="0,0,0,14" />
 
                                 <DockPanel>
                                     <TextBox DockPanel.Dock="Right" Width="70" Height="30" Text="{Binding Threads}" HorizontalContentAlignment="Right" />
-                                    <TextBlock Text="Threads d'analyse" VerticalAlignment="Center" />
+                                    <TextBlock Text="{ui:L optThreads}" VerticalAlignment="Center" />
                                 </DockPanel>
-                                <TextBlock Text="Réseau : 16 à 32 · disque local : 8 à 16" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,4,0,14" />
+                                <TextBlock Text="{ui:L optThreadsHint}" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,4,0,14" />
 
                                 <DockPanel>
                                     <TextBox DockPanel.Dock="Right" Width="70" Height="30" Text="{Binding DupMinSizeMb}" HorizontalContentAlignment="Right" />
-                                    <TextBlock Text="Doublons : taille min. (Mo)" VerticalAlignment="Center" />
+                                    <TextBlock Text="{ui:L optDupMin}" VerticalAlignment="Center" />
                                 </DockPanel>
-                                <TextBlock Text="Fichiers retenus pour la comparaison, appliqué à la prochaine analyse" Style="{StaticResource Subtle}"
+                                <TextBlock Text="{ui:L optDupMinHint}" Style="{StaticResource Subtle}"
                                            FontSize="11.5" Margin="0,4,0,14" TextWrapping="Wrap" />
 
                                 <DockPanel>
                                     <TextBox DockPanel.Dock="Right" Width="70" Height="30" Text="{Binding DupThreads}" HorizontalContentAlignment="Right" />
-                                    <TextBlock Text="Doublons : lectures parallèles" VerticalAlignment="Center" />
+                                    <TextBlock Text="{ui:L optDupThreads}" VerticalAlignment="Center" />
                                 </DockPanel>
-                                <TextBlock Text="Réglages mémorisés pour les prochaines fois" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,4,0,0" />
+                                <TextBlock Text="{ui:L optSaved}" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,4,0,0" />
 
                                 <Rectangle Height="1" Fill="{DynamicResource BorderBr}" Margin="0,14" />
-                                <TextBlock Text="Raccourcis clavier" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                                <TextBlock Text="{ui:L shortcuts}" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
                                 <Grid TextElement.FontSize="12">
                                     <Grid.Resources>
                                         <Style TargetType="TextBlock" BasedOn="{StaticResource Subtle}">
@@ -313,20 +320,20 @@
                                         <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
                                         <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
                                     </Grid.RowDefinitions>
-                                    <TextBlock Grid.Row="0" Text="Entrée / F5" FontWeight="SemiBold" /><TextBlock Grid.Row="0" Grid.Column="1" Text="Analyser / relancer l'analyse" />
-                                    <TextBlock Grid.Row="1" Text="Échap" FontWeight="SemiBold" /><TextBlock Grid.Row="1" Grid.Column="1" Text="Arrêter l'analyse en cours" />
-                                    <TextBlock Grid.Row="2" Text="Ctrl+F" FontWeight="SemiBold" /><TextBlock Grid.Row="2" Grid.Column="1" Text="Rechercher un dossier" />
-                                    <TextBlock Grid.Row="3" Text="Ctrl+L" FontWeight="SemiBold" /><TextBlock Grid.Row="3" Grid.Column="1" Text="Saisir un chemin" />
-                                    <TextBlock Grid.Row="4" Text="Ctrl+O" FontWeight="SemiBold" /><TextBlock Grid.Row="4" Grid.Column="1" Text="Parcourir…" />
-                                    <TextBlock Grid.Row="5" Text="Ctrl+E" FontWeight="SemiBold" /><TextBlock Grid.Row="5" Grid.Column="1" Text="Exporter l'onglet en CSV" />
-                                    <TextBlock Grid.Row="6" Text="Ctrl+1 … 7" FontWeight="SemiBold" /><TextBlock Grid.Row="6" Grid.Column="1" Text="Changer d'onglet" />
-                                    <TextBlock Grid.Row="7" Text="Glisser" FontWeight="SemiBold" /><TextBlock Grid.Row="7" Grid.Column="1" Text="Déposer un dossier pour l'analyser" />
+                                    <TextBlock Grid.Row="0" Text="{ui:L kEnterF5}" FontWeight="SemiBold" /><TextBlock Grid.Row="0" Grid.Column="1" Text="{ui:L kbScan}" />
+                                    <TextBlock Grid.Row="1" Text="{ui:L kEsc}" FontWeight="SemiBold" /><TextBlock Grid.Row="1" Grid.Column="1" Text="{ui:L kbStop}" />
+                                    <TextBlock Grid.Row="2" Text="{ui:L kCtrlF}" FontWeight="SemiBold" /><TextBlock Grid.Row="2" Grid.Column="1" Text="{ui:L kbSearch}" />
+                                    <TextBlock Grid.Row="3" Text="{ui:L kCtrlL}" FontWeight="SemiBold" /><TextBlock Grid.Row="3" Grid.Column="1" Text="{ui:L kbPath}" />
+                                    <TextBlock Grid.Row="4" Text="{ui:L kCtrlO}" FontWeight="SemiBold" /><TextBlock Grid.Row="4" Grid.Column="1" Text="{ui:L kbBrowse}" />
+                                    <TextBlock Grid.Row="5" Text="{ui:L kCtrlE}" FontWeight="SemiBold" /><TextBlock Grid.Row="5" Grid.Column="1" Text="{ui:L kbExport}" />
+                                    <TextBlock Grid.Row="6" Text="{ui:L kCtrl17}" FontWeight="SemiBold" /><TextBlock Grid.Row="6" Grid.Column="1" Text="{ui:L kbTabs}" />
+                                    <TextBlock Grid.Row="7" Text="{ui:L kDrag}" FontWeight="SemiBold" /><TextBlock Grid.Row="7" Grid.Column="1" Text="{ui:L kbDrag}" />
                                 </Grid>
                             </StackPanel>
                         </Border>
                     </Popup>
 
-                    <Button Grid.Column="7" Margin="8,0,0,0" Command="{Binding NewScanCommand}" ToolTip="Revenir à l'accueil">
+                    <Button Grid.Column="7" Margin="8,0,0,0" Command="{Binding NewScanCommand}" ToolTip="{ui:L homeTip}">
                         <TextBlock Style="{StaticResource Icon}" Text="&#xE80F;" />
                     </Button>
                 </Grid>
@@ -341,7 +348,7 @@
                             <TextBlock Style="{StaticResource Icon}" Text="&#xEDA2;" Foreground="{DynamicResource KpiBlueFg}" FontSize="17" HorizontalAlignment="Center" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Espace occupé" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{ui:L kpiSize}" Style="{DynamicResource KpiLabel}" />
                             <TextBlock Text="{Binding KpiSize}" Style="{DynamicResource KpiValue}" />
                             <TextBlock Text="{Binding KpiSizeSub}" Style="{DynamicResource KpiLabel}" FontSize="11" TextTrimming="CharacterEllipsis" />
                         </StackPanel>
@@ -353,7 +360,7 @@
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE7C3;" Foreground="{DynamicResource KpiGreenFg}" FontSize="17" HorizontalAlignment="Center" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Fichiers" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{ui:L files}" Style="{DynamicResource KpiLabel}" />
                             <TextBlock Text="{Binding KpiFiles}" Style="{DynamicResource KpiValue}" />
                         </StackPanel>
                     </DockPanel>
@@ -364,7 +371,7 @@
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" Foreground="{DynamicResource KpiAmberFg}" FontSize="17" HorizontalAlignment="Center" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Dossiers" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{ui:L folders}" Style="{DynamicResource KpiLabel}" />
                             <TextBlock Text="{Binding KpiDirs}" Style="{DynamicResource KpiValue}" />
                         </StackPanel>
                     </DockPanel>
@@ -375,7 +382,7 @@
                             <TextBlock Style="{StaticResource Icon}" Text="&#xE916;" Foreground="{DynamicResource KpiPurpleFg}" FontSize="17" HorizontalAlignment="Center" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Durée de l'analyse" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{ui:L kpiDuration}" Style="{DynamicResource KpiLabel}" />
                             <TextBlock Text="{Binding KpiDuration}" Style="{DynamicResource KpiValue}" />
                         </StackPanel>
                     </DockPanel>
@@ -386,20 +393,20 @@
                             <TextBlock Style="{StaticResource Icon}" Text="&#xED1A;" Foreground="{DynamicResource KpiRedFg}" FontSize="17" HorizontalAlignment="Center" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Dossiers inaccessibles" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{ui:L inaccessibleFolders}" Style="{DynamicResource KpiLabel}" />
                             <TextBlock Text="{Binding KpiErrors}" Style="{DynamicResource KpiValue}" />
                         </StackPanel>
                     </DockPanel>
                 </Border>
                 <!-- Fichiers suspects : cliquable, ouvre l'onglet Suspects -->
                 <Border Style="{StaticResource Card}" Margin="6,0" Padding="14,12" Cursor="Hand" MouseLeftButtonUp="SuspectsKpi_Click"
-                        ToolTip="Fichiers présentant des signes de logiciel malveillant — cliquer pour les voir">
+                        ToolTip="{ui:L kpiSuspectsTip}">
                     <DockPanel>
                         <Border Style="{DynamicResource KpiIcon}" Background="{DynamicResource KpiRedBg}">
                             <Image Source="{StaticResource ThreatShield}" Width="20" Height="20" />
                         </Border>
                         <StackPanel VerticalAlignment="Center">
-                            <TextBlock Text="Fichiers suspects" Style="{DynamicResource KpiLabel}" />
+                            <TextBlock Text="{ui:L kpiSuspects}" Style="{DynamicResource KpiLabel}" />
                             <TextBlock Text="{Binding KpiSuspects}">
                                 <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource KpiValue}">
@@ -428,8 +435,8 @@
                                 </Image.Effect>
                             </Image>
                             <TextBlock Text="PrimaFiles" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource AccentBr}" HorizontalAlignment="Center" Margin="0,14,0,0" />
-                            <TextBlock Text="Où est passé votre espace disque ?" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,20,0,8" />
-                            <TextBlock Text="Saisissez un dossier ou un partage réseau ci-dessus, ou choisissez directement un lecteur :"
+                            <TextBlock Text="{ui:L welcomeTitle}" FontSize="24" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,20,0,8" />
+                            <TextBlock Text="{ui:L welcomeText}"
                                        Style="{StaticResource Subtle}" FontSize="14" HorizontalAlignment="Center" />
 
                             <ItemsControl ItemsSource="{Binding Drives}" Margin="0,26,0,0" HorizontalAlignment="Center">
@@ -465,8 +472,9 @@
                             </ItemsControl>
 
                             <TextBlock Style="{StaticResource Subtle}" FontSize="12" HorizontalAlignment="Center" Margin="0,26,0,0" TextWrapping="Wrap" TextAlignment="Center">
-                                Astuce : pour un partage réseau volumineux, augmentez le nombre de threads dans les paramètres
-                                <Run FontFamily="{StaticResource IconFont}" Text="&#xE713;" /> pour accélérer l'analyse.
+                                <Run Text="{ui:L tipBefore}" />
+                                <Run FontFamily="{StaticResource IconFont}" Text="&#xE713;" />
+                                <Run Text="{ui:L tipAfter}" />
                             </TextBlock>
                         </StackPanel>
                     </ScrollViewer>
@@ -474,7 +482,7 @@
                     <!-- Analyse en cours -->
                     <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Width="600"
                                 Visibility="{Binding IsScanning, Converter={StaticResource BoolToVis}}">
-                        <TextBlock Text="Analyse en cours…" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" />
+                        <TextBlock Text="{ui:L scanning}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" />
                         <TextBlock Text="{Binding ScanTarget}" Style="{StaticResource Subtle}" FontSize="14" HorizontalAlignment="Center"
                                    Margin="0,6,0,22" TextTrimming="CharacterEllipsis" />
                         <ProgressBar IsIndeterminate="{Binding IsScanning}" Height="6" />
@@ -484,7 +492,7 @@
                         <Button Style="{StaticResource DangerButton}" Command="{Binding CancelCommand}" HorizontalAlignment="Center" Margin="0,22,0,0">
                             <StackPanel Orientation="Horizontal">
                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE71A;" FontSize="12" Margin="0,0,8,0" />
-                                <TextBlock Text="Arrêter l'analyse" />
+                                <TextBlock Text="{ui:L stopScan}" />
                             </StackPanel>
                         </Button>
                     </StackPanel>
@@ -497,7 +505,7 @@
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource TabIcon}" Text="&#xE8B7;" />
-                                    <TextBlock Text="Arborescence" />
+                                    <TextBlock Text="{ui:L tabTree}" />
                                 </StackPanel>
                             </TabItem.Header>
                             <Grid>
@@ -510,36 +518,36 @@
                                 <DockPanel>
                                     <Grid DockPanel.Dock="Top" Margin="14,10,14,6">
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="Trier par" Style="{StaticResource Subtle}" Margin="0,0,10,0" />
+                                            <TextBlock Text="{ui:L sortBy}" Style="{StaticResource Subtle}" Margin="0,0,10,0" />
                                             <Border Background="{DynamicResource SegmentBg}" CornerRadius="7" Padding="1">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <RadioButton Style="{StaticResource Segment}" Content="Nom (ordre Windows)"
+                                                    <RadioButton Style="{StaticResource Segment}" Content="{ui:L sortName}"
                                                                  IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=0}" />
-                                                    <RadioButton Style="{StaticResource Segment}" Content="Taille"
+                                                    <RadioButton Style="{StaticResource Segment}" Content="{ui:L size}"
                                                                  IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=1}" />
-                                                    <RadioButton Style="{StaticResource Segment}" Content="Fichiers"
+                                                    <RadioButton Style="{StaticResource Segment}" Content="{ui:L files}"
                                                                  IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=2}" />
-                                                    <RadioButton Style="{StaticResource Segment}" Content="Date"
+                                                    <RadioButton Style="{StaticResource Segment}" Content="{ui:L date}"
                                                                  IsChecked="{Binding SortIndex, Converter={StaticResource IntEquals}, ConverterParameter=3}" />
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
                                         <!-- Recherche d'un dossier par son nom (Ctrl+F, Entrée = suivant, Maj+Entrée = précédent) -->
                                         <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
-                                                    ToolTip="Double-clic ou ← → pour déplier · clic droit pour plus d'actions">
+                                                    ToolTip="{ui:L treeHint}">
                                             <TextBlock Text="{Binding FolderSearchStatus}" Style="{StaticResource Subtle}" FontSize="11.5"
                                                        VerticalAlignment="Center" Margin="0,0,8,0" />
                                             <Grid Width="230">
                                                 <TextBox x:Name="FolderSearchBox" Height="30" Padding="30,0,8,0"
                                                          Text="{Binding FolderSearchText, UpdateSourceTrigger=PropertyChanged}"
-                                                         Tag="Rechercher un dossier (Ctrl+F)" KeyDown="FolderSearchBox_KeyDown" />
+                                                         Tag="{ui:L searchPlaceholder}" KeyDown="FolderSearchBox_KeyDown" />
                                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE721;" FontSize="12" Foreground="{DynamicResource SubtleTextBr}"
                                                            Margin="10,0,0,0" HorizontalAlignment="Left" IsHitTestVisible="False" />
                                             </Grid>
-                                            <Button Margin="4,0,0,0" Height="30" Padding="8,0" Command="{Binding FindPreviousFolderCommand}" ToolTip="Précédent (Maj+Entrée)">
+                                            <Button Margin="4,0,0,0" Height="30" Padding="8,0" Command="{Binding FindPreviousFolderCommand}" ToolTip="{ui:L prevTip}">
                                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE70E;" FontSize="11" />
                                             </Button>
-                                            <Button Margin="4,0,0,0" Height="30" Padding="8,0" Command="{Binding FindNextFolderCommand}" ToolTip="Suivant (Entrée)">
+                                            <Button Margin="4,0,0,0" Height="30" Padding="8,0" Command="{Binding FindNextFolderCommand}" ToolTip="{ui:L nextTip}">
                                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE70D;" FontSize="11" />
                                             </Button>
                                         </StackPanel>
@@ -563,7 +571,7 @@
                                             </Style>
                                         </DataGrid.RowStyle>
                                         <DataGrid.Columns>
-                                            <DataGridTemplateColumn Header="Nom" Width="*" MinWidth="240" SortMemberPath="Name">
+                                            <DataGridTemplateColumn Header="{ui:L name}" Width="*" MinWidth="240" SortMemberPath="Name">
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
                                                         <StackPanel Orientation="Horizontal" Margin="{Binding Indent}" ToolTip="{Binding ToolTip}">
@@ -576,9 +584,9 @@
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTextColumn Header="Taille" Width="90" SortMemberPath="Size" FontWeight="SemiBold"
+                                            <DataGridTextColumn Header="{ui:L size}" Width="90" SortMemberPath="Size" FontWeight="SemiBold"
                                                                 Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                            <DataGridTemplateColumn Header="% du parent" Width="160" SortMemberPath="Size">
+                                            <DataGridTemplateColumn Header="{ui:L pctParent}" Width="160" SortMemberPath="Size">
                                                 <DataGridTemplateColumn.CellTemplate>
                                                     <DataTemplate>
                                                         <DockPanel>
@@ -590,11 +598,11 @@
                                                     </DataTemplate>
                                                 </DataGridTemplateColumn.CellTemplate>
                                             </DataGridTemplateColumn>
-                                            <DataGridTextColumn Header="Fichiers" Width="90" SortMemberPath="Files"
+                                            <DataGridTextColumn Header="{ui:L files}" Width="90" SortMemberPath="Files"
                                                                 Binding="{Binding Files, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
-                                            <DataGridTextColumn Header="Dossiers" Width="85" SortMemberPath="Files"
+                                            <DataGridTextColumn Header="{ui:L folders}" Width="85" SortMemberPath="Files"
                                                                 Binding="{Binding Dirs, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
-                                            <DataGridTextColumn Header="Modifié le" Width="130" SortMemberPath="ModifiedUtc"
+                                            <DataGridTextColumn Header="{ui:L modified}" Width="130" SortMemberPath="ModifiedUtc"
                                                                 Binding="{Binding ModifiedUtc, Converter={StaticResource LocalDate}}" />
                                         </DataGrid.Columns>
                                     </DataGrid>
@@ -612,10 +620,10 @@
                                     </StackPanel>
                                     <DataGrid ItemsSource="{Binding FolderFiles}" ContextMenu="{StaticResource SimpleMenu}">
                                         <DataGrid.Columns>
-                                            <DataGridTemplateColumn Header="Nom" Width="*" SortMemberPath="Name" CellTemplate="{StaticResource NameWithBadges}" />
-                                            <DataGridTextColumn Header="Taille" Width="80" SortMemberPath="Size"
+                                            <DataGridTemplateColumn Header="{ui:L name}" Width="*" SortMemberPath="Name" CellTemplate="{StaticResource NameWithBadges}" />
+                                            <DataGridTextColumn Header="{ui:L size}" Width="80" SortMemberPath="Size"
                                                                 Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                            <DataGridTextColumn Header="Modifié le" Width="138" SortMemberPath="LastWriteUtc"
+                                            <DataGridTextColumn Header="{ui:L modified}" Width="138" SortMemberPath="LastWriteUtc"
                                                                 Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
                                         </DataGrid.Columns>
                                     </DataGrid>
@@ -628,20 +636,20 @@
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource TabIcon}" Text="&#xE7C3;" />
-                                    <TextBlock Text="Gros fichiers" />
+                                    <TextBlock Text="{ui:L tabBigFiles}" />
                                 </StackPanel>
                             </TabItem.Header>
                             <DockPanel>
                                 <TextBlock DockPanel.Dock="Top" Text="{Binding TopFilesHeader}" Style="{StaticResource Subtle}" Margin="14,12,14,6" />
                                 <DataGrid ItemsSource="{Binding TopFiles}" ContextMenu="{StaticResource FileMenu}">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="Nom" Width="280" SortMemberPath="Name" CellTemplate="{StaticResource NameWithBadges}" />
-                                        <DataGridTextColumn Header="Taille" Width="95" SortMemberPath="Size" FontWeight="SemiBold"
+                                        <DataGridTemplateColumn Header="{ui:L name}" Width="280" SortMemberPath="Name" CellTemplate="{StaticResource NameWithBadges}" />
+                                        <DataGridTextColumn Header="{ui:L size}" Width="95" SortMemberPath="Size" FontWeight="SemiBold"
                                                             Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                        <DataGridTextColumn Header="Type" Width="75" Binding="{Binding Extension}" />
-                                        <DataGridTextColumn Header="Modifié le" Width="130" SortMemberPath="LastWriteUtc"
+                                        <DataGridTextColumn Header="{ui:L type}" Width="75" Binding="{Binding Extension}" />
+                                        <DataGridTextColumn Header="{ui:L modified}" Width="130" SortMemberPath="LastWriteUtc"
                                                             Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
-                                        <DataGridTextColumn Header="Emplacement" Width="*" Binding="{Binding DirectoryPath}" Foreground="{DynamicResource SubtleTextBr}" />
+                                        <DataGridTextColumn Header="{ui:L location}" Width="*" Binding="{Binding DirectoryPath}" Foreground="{DynamicResource SubtleTextBr}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </DockPanel>
@@ -652,17 +660,17 @@
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource TabIcon}" Text="&#xE8FD;" />
-                                    <TextBlock Text="Types de fichiers" />
+                                    <TextBlock Text="{ui:L tabTypes}" />
                                 </StackPanel>
                             </TabItem.Header>
                             <DataGrid ItemsSource="{Binding Extensions}" Margin="0,6,0,0">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Extension" Width="170" Binding="{Binding Extension}" FontWeight="SemiBold" />
-                                    <DataGridTextColumn Header="Fichiers" Width="100" SortMemberPath="Count"
+                                    <DataGridTextColumn Header="{ui:L extension}" Width="170" Binding="{Binding Extension}" FontWeight="SemiBold" />
+                                    <DataGridTextColumn Header="{ui:L files}" Width="100" SortMemberPath="Count"
                                                         Binding="{Binding Count, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
-                                    <DataGridTextColumn Header="Taille" Width="100" SortMemberPath="Size"
+                                    <DataGridTextColumn Header="{ui:L size}" Width="100" SortMemberPath="Size"
                                                         Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                    <DataGridTemplateColumn Header="Part du total" Width="280" SortMemberPath="Percent">
+                                    <DataGridTemplateColumn Header="{ui:L shareOfTotal}" Width="280" SortMemberPath="Percent">
                                         <DataGridTemplateColumn.CellTemplate>
                                             <DataTemplate>
                                                 <DockPanel>
@@ -674,7 +682,7 @@
                                             </DataTemplate>
                                         </DataGridTemplateColumn.CellTemplate>
                                     </DataGridTemplateColumn>
-                                    <DataGridTextColumn Header="Taille moyenne" Width="120" SortMemberPath="AverageSize"
+                                    <DataGridTextColumn Header="{ui:L avgSize}" Width="120" SortMemberPath="AverageSize"
                                                         Binding="{Binding AverageSize, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
                                 </DataGrid.Columns>
                             </DataGrid>
@@ -685,7 +693,7 @@
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource TabIcon}" Text="&#xE8C8;" />
-                                    <TextBlock Text="Doublons" />
+                                    <TextBlock Text="{ui:L tabDuplicates}" />
                                 </StackPanel>
                             </TabItem.Header>
                             <Grid>
@@ -706,14 +714,14 @@
                                                 Visibility="{Binding IsFindingDuplicates, Converter={StaticResource InverseBoolToVis}}">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE721;" FontSize="12" Margin="0,0,8,0" />
-                                                <TextBlock Text="Rechercher les doublons" />
+                                                <TextBlock Text="{ui:L findDuplicates}" />
                                             </StackPanel>
                                         </Button>
                                         <Button Style="{StaticResource DangerButton}" Command="{Binding CancelDuplicatesCommand}" Margin="0"
                                                 Visibility="{Binding IsFindingDuplicates, Converter={StaticResource BoolToVis}}">
                                             <StackPanel Orientation="Horizontal">
                                                 <TextBlock Style="{StaticResource Icon}" Text="&#xE71A;" FontSize="12" Margin="0,0,8,0" />
-                                                <TextBlock Text="Annuler la recherche" />
+                                                <TextBlock Text="{ui:L cancelSearch}" />
                                             </StackPanel>
                                         </Button>
                                     </StackPanel>
@@ -721,7 +729,7 @@
                                         <TextBlock Text="{Binding DupStatus}" TextTrimming="CharacterEllipsis" />
                                         <ProgressBar Value="{Binding DupPercent, Mode=OneWay}" Maximum="100" Height="4" Margin="0,6,0,0"
                                                      Visibility="{Binding IsFindingDuplicates, Converter={StaticResource BoolToVis}}" />
-                                        <TextBlock Text="Comparaison par taille, puis empreinte partielle (début + fin), puis SHA-256 complet"
+                                        <TextBlock Text="{ui:L dupMethod}"
                                                    Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,3,0,0"
                                                    Visibility="{Binding IsFindingDuplicates, Converter={StaticResource InverseBoolToVis}}" />
                                     </StackPanel>
@@ -729,14 +737,14 @@
 
                                 <DataGrid Grid.Row="1" ItemsSource="{Binding Duplicates}" SelectedItem="{Binding SelectedDuplicate}">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Fichier" Width="*" Binding="{Binding FirstName}" FontWeight="SemiBold" />
-                                        <DataGridTextColumn Header="Taille unitaire" Width="110" SortMemberPath="Size"
+                                        <DataGridTextColumn Header="{ui:L file}" Width="*" Binding="{Binding FirstName}" FontWeight="SemiBold" />
+                                        <DataGridTextColumn Header="{ui:L unitSize}" Width="110" SortMemberPath="Size"
                                                             Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                        <DataGridTextColumn Header="Copies" Width="80" SortMemberPath="Count"
+                                        <DataGridTextColumn Header="{ui:L copies}" Width="80" SortMemberPath="Count"
                                                             Binding="{Binding Count, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
-                                        <DataGridTextColumn Header="Espace récupérable" Width="140" SortMemberPath="WastedSize" Foreground="{DynamicResource DangerBr}" FontWeight="SemiBold"
+                                        <DataGridTextColumn Header="{ui:L recoverable}" Width="140" SortMemberPath="WastedSize" Foreground="{DynamicResource DangerBr}" FontWeight="SemiBold"
                                                             Binding="{Binding WastedSize, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                        <DataGridTextColumn Header="Empreinte SHA-256" Width="160" Binding="{Binding ShortHash}" FontFamily="Consolas"
+                                        <DataGridTextColumn Header="{ui:L sha256}" Width="160" Binding="{Binding ShortHash}" FontFamily="Consolas"
                                                             Foreground="{DynamicResource SubtleTextBr}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
@@ -745,7 +753,7 @@
 
                                 <DataGrid Grid.Row="3" ItemsSource="{Binding SelectedDuplicate.Files}" ContextMenu="{StaticResource FileMenu}">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="Emplacements des copies" Width="*" SortMemberPath="FullPath">
+                                        <DataGridTemplateColumn Header="{ui:L copyLocations}" Width="*" SortMemberPath="FullPath">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal">
@@ -755,7 +763,7 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="Modifié le" Width="140" SortMemberPath="LastWriteUtc"
+                                        <DataGridTextColumn Header="{ui:L modified}" Width="140" SortMemberPath="LastWriteUtc"
                                                             Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
@@ -783,10 +791,10 @@
                                         </Grid.ColumnDefinitions>
                                         <Image Source="{StaticResource DangerTriangle}" Width="54" Height="54" VerticalAlignment="Top" Margin="0,0,16,0" />
                                         <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                                            <TextBlock Text="ATTENTION : FICHIERS POTENTIELLEMENT MALVEILLANTS" FontSize="16" FontWeight="Bold"
+                                            <TextBlock Text="{ui:L suspectsBannerTitle}" FontSize="16" FontWeight="Bold"
                                                        Foreground="{DynamicResource DangerBr}" />
                                             <TextBlock Text="{Binding SuspectsSummary}" TextWrapping="Wrap" Margin="0,5,0,0" />
-                                            <TextBlock Text="N'ouvrez pas ces fichiers. En cas de menace confirmée, prévenez votre service informatique."
+                                            <TextBlock Text="{ui:L suspectsBannerText}"
                                                        FontWeight="SemiBold" Margin="0,5,0,0" TextWrapping="Wrap" />
                                         </StackPanel>
                                         <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="16,0,0,0">
@@ -794,12 +802,12 @@
                                                     Visibility="{Binding IsAvChecking, Converter={StaticResource InverseBoolToVis}}">
                                                 <StackPanel Orientation="Horizontal">
                                                     <Image Source="{StaticResource ThreatShield}" Width="15" Height="15" Margin="0,0,8,0" />
-                                                    <TextBlock Text="Tout vérifier avec l'antivirus" />
+                                                    <TextBlock Text="{ui:L checkAll}" />
                                                 </StackPanel>
                                             </Button>
                                             <Button Command="{Binding CancelAvCommand}" MinWidth="230"
-                                                    Visibility="{Binding IsAvChecking, Converter={StaticResource BoolToVis}}" Content="Arrêter la vérification" />
-                                            <Button Command="{Binding CheckSuspectCommand}" MinWidth="230" Margin="0,6,0,0" Content="Vérifier le fichier sélectionné" />
+                                                    Visibility="{Binding IsAvChecking, Converter={StaticResource BoolToVis}}" Content="{ui:L stopCheck}" />
+                                            <Button Command="{Binding CheckSuspectCommand}" MinWidth="230" Margin="0,6,0,0" Content="{ui:L checkSelected}" />
                                             <TextBlock Text="{Binding AvName}" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,6,0,0" HorizontalAlignment="Center" />
                                         </StackPanel>
                                     </Grid>
@@ -810,8 +818,8 @@
                                             Visibility="{Binding NoSuspects, Converter={StaticResource BoolToVis}}">
                                     <Image Source="{StaticResource SafeShield}" Width="46" Height="46" Margin="0,0,14,0" />
                                     <StackPanel VerticalAlignment="Center">
-                                        <TextBlock Text="Aucun fichier suspect détecté" FontSize="16" FontWeight="SemiBold" />
-                                        <TextBlock Text="Aucun des indices habituels de logiciel malveillant n'a été trouvé. Cela ne remplace pas votre antivirus."
+                                        <TextBlock Text="{ui:L noSuspectsTitle}" FontSize="16" FontWeight="SemiBold" />
+                                        <TextBlock Text="{ui:L noSuspectsText}"
                                                    Style="{StaticResource Subtle}" Margin="0,3,0,0" />
                                     </StackPanel>
                                 </StackPanel>
@@ -819,7 +827,7 @@
                                 <DataGrid ItemsSource="{Binding Suspects}" SelectedItem="{Binding SelectedSuspect}" ContextMenu="{StaticResource FileMenu}"
                                           Visibility="{Binding HasSuspects, Converter={StaticResource BoolToVis}}" RowHeight="32">
                                     <DataGrid.Columns>
-                                        <DataGridTemplateColumn Header="Niveau" Width="120" SortMemberPath="IsDanger">
+                                        <DataGridTemplateColumn Header="{ui:L level}" Width="120" SortMemberPath="IsDanger">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <StackPanel Orientation="Horizontal">
@@ -840,15 +848,15 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="Fichier" Width="220" Binding="{Binding Name}" FontWeight="SemiBold" />
-                                        <DataGridTemplateColumn Header="Pourquoi ?" Width="*" SortMemberPath="ReasonsText">
+                                        <DataGridTextColumn Header="{ui:L file}" Width="220" Binding="{Binding Name}" FontWeight="SemiBold" />
+                                        <DataGridTemplateColumn Header="{ui:L why}" Width="*" SortMemberPath="ReasonsText">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding ReasonsText}" TextTrimming="CharacterEllipsis" ToolTip="{Binding ReasonsText}" VerticalAlignment="Center" />
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTemplateColumn Header="Antivirus" Width="200" SortMemberPath="AvText">
+                                        <DataGridTemplateColumn Header="{ui:L antivirus}" Width="200" SortMemberPath="AvText">
                                             <DataGridTemplateColumn.CellTemplate>
                                                 <DataTemplate>
                                                     <TextBlock Text="{Binding AvText}" FontWeight="SemiBold" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
@@ -866,11 +874,11 @@
                                                 </DataTemplate>
                                             </DataGridTemplateColumn.CellTemplate>
                                         </DataGridTemplateColumn>
-                                        <DataGridTextColumn Header="Taille" Width="85" SortMemberPath="Size"
+                                        <DataGridTextColumn Header="{ui:L size}" Width="85" SortMemberPath="Size"
                                                             Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                        <DataGridTextColumn Header="Modifié le" Width="130" SortMemberPath="LastWriteUtc"
+                                        <DataGridTextColumn Header="{ui:L modified}" Width="130" SortMemberPath="LastWriteUtc"
                                                             Binding="{Binding LastWriteUtc, Converter={StaticResource LocalDate}}" />
-                                        <DataGridTextColumn Header="Emplacement" Width="260" Binding="{Binding DirectoryPath}" Foreground="{DynamicResource SubtleTextBr}" />
+                                        <DataGridTextColumn Header="{ui:L location}" Width="260" Binding="{Binding DirectoryPath}" Foreground="{DynamicResource SubtleTextBr}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </DockPanel>
@@ -886,8 +894,8 @@
                             </TabItem.Header>
                             <DataGrid ItemsSource="{Binding Errors}" ContextMenu="{StaticResource SimpleMenu}" Margin="0,6,0,0">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="Chemin" Width="2*" Binding="{Binding Path}" />
-                                    <DataGridTextColumn Header="Erreur" Width="*" Binding="{Binding Message}" Foreground="{DynamicResource SubtleTextBr}" />
+                                    <DataGridTextColumn Header="{ui:L path}" Width="2*" Binding="{Binding Path}" />
+                                    <DataGridTextColumn Header="{ui:L error}" Width="*" Binding="{Binding Message}" Foreground="{DynamicResource SubtleTextBr}" />
                                 </DataGrid.Columns>
                             </DataGrid>
                         </TabItem>
@@ -897,29 +905,29 @@
                             <TabItem.Header>
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource TabIcon}" Text="&#xE81C;" />
-                                    <TextBlock Text="Dossiers inactifs" />
+                                    <TextBlock Text="{ui:L tabStale}" />
                                 </StackPanel>
                             </TabItem.Header>
                             <DockPanel>
                                 <DockPanel DockPanel.Dock="Top" Margin="14,10,14,6">
                                     <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
-                                        <TextBlock Text="Aucun fichier modifié depuis" Style="{StaticResource Subtle}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <TextBlock Text="{ui:L staleLabel}" Style="{StaticResource Subtle}" VerticalAlignment="Center" Margin="0,0,10,0" />
                                         <ComboBox ItemsSource="{Binding StaleYearChoices}" SelectedItem="{Binding StaleYears}" Width="70" Height="30"
                                                   VerticalContentAlignment="Center" />
-                                        <TextBlock Text="an(s)" Style="{StaticResource Subtle}" VerticalAlignment="Center" Margin="8,0,16,0" />
+                                        <TextBlock Text="{ui:L years}" Style="{StaticResource Subtle}" VerticalAlignment="Center" Margin="8,0,16,0" />
                                     </StackPanel>
                                     <TextBlock Text="{Binding StaleSummary}" Style="{StaticResource Subtle}" VerticalAlignment="Center"
                                                TextTrimming="CharacterEllipsis" ToolTip="{Binding StaleSummary}" />
                                 </DockPanel>
                                 <DataGrid ItemsSource="{Binding StaleFolders}" ContextMenu="{StaticResource StaleMenu}" MouseDoubleClick="StaleGrid_MouseDoubleClick">
                                     <DataGrid.Columns>
-                                        <DataGridTextColumn Header="Dossier" Width="220" Binding="{Binding Name}" FontWeight="SemiBold" />
-                                        <DataGridTextColumn Header="Taille" Width="95" SortMemberPath="Size"
+                                        <DataGridTextColumn Header="{ui:L folder}" Width="220" Binding="{Binding Name}" FontWeight="SemiBold" />
+                                        <DataGridTextColumn Header="{ui:L size}" Width="95" SortMemberPath="Size"
                                                             Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
-                                        <DataGridTextColumn Header="Fichiers" Width="85" Binding="{Binding Files, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
-                                        <DataGridTextColumn Header="Dernière modification" Width="150" SortMemberPath="NewestUtc"
+                                        <DataGridTextColumn Header="{ui:L files}" Width="85" Binding="{Binding Files, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="{ui:L lastModified}" Width="150" SortMemberPath="NewestUtc"
                                                             Binding="{Binding NewestUtc, Converter={StaticResource LocalDate}}" />
-                                        <DataGridTextColumn Header="Emplacement" Width="*" Binding="{Binding FullPath}" Foreground="{DynamicResource SubtleTextBr}" />
+                                        <DataGridTextColumn Header="{ui:L location}" Width="*" Binding="{Binding FullPath}" Foreground="{DynamicResource SubtleTextBr}" />
                                     </DataGrid.Columns>
                                 </DataGrid>
                             </DockPanel>
@@ -941,20 +949,20 @@
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xF0E2;" Foreground="{DynamicResource AccentBr}" Margin="0,0,8,0" />
-                            <TextBlock Text="Carte des volumes" Style="{StaticResource SectionTitle}" />
+                            <TextBlock Text="{ui:L treemapTitle}" Style="{StaticResource SectionTitle}" />
                         </StackPanel>
                         <TextBlock Grid.Column="1" Text="{Binding FocusPath, ElementName=Treemap}" Style="{StaticResource Subtle}" Margin="14,0" TextTrimming="CharacterEllipsis" />
                         <StackPanel Grid.Column="2" Orientation="Horizontal">
-                            <Button Style="{StaticResource GhostButton}" Click="ZoomOut_Click" IsEnabled="{Binding CanZoomOut, ElementName=Treemap}" ToolTip="Remonter d'un niveau (clic droit sur la carte)">
+                            <Button Style="{StaticResource GhostButton}" Click="ZoomOut_Click" IsEnabled="{Binding CanZoomOut, ElementName=Treemap}" ToolTip="{ui:L upTip}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Icon}" Text="&#xE74A;" FontSize="12" Margin="0,0,6,0" />
-                                    <TextBlock Text="Remonter" />
+                                    <TextBlock Text="{ui:L up}" />
                                 </StackPanel>
                             </Button>
-                            <Button Style="{StaticResource GhostButton}" Click="ZoomRoot_Click" IsEnabled="{Binding CanZoomOut, ElementName=Treemap}" ToolTip="Revenir au dossier analysé">
+                            <Button Style="{StaticResource GhostButton}" Click="ZoomRoot_Click" IsEnabled="{Binding CanZoomOut, ElementName=Treemap}" ToolTip="{ui:L rootTip}">
                                 <StackPanel Orientation="Horizontal">
                                     <TextBlock Style="{StaticResource Icon}" Text="&#xE80F;" FontSize="12" Margin="0,0,6,0" />
-                                    <TextBlock Text="Racine" />
+                                    <TextBlock Text="{ui:L root}" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -967,7 +975,7 @@
                                 <Setter Property="Foreground" Value="{DynamicResource TextBr}" />
                                 <Style.Triggers>
                                     <DataTrigger Binding="{Binding HoverInfo, ElementName=Treemap}" Value="">
-                                        <Setter Property="Text" Value="Plus un bloc est grand, plus il occupe d'espace · survol : détail · clic : afficher dans l'arborescence · double-clic : zoomer · clic droit : remonter" />
+                                        <Setter Property="Text" Value="{ui:L treemapHint}" />
                                         <Setter Property="Foreground" Value="{DynamicResource FaintTextBr}" />
                                     </DataTrigger>
                                 </Style.Triggers>

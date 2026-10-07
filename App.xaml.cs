@@ -12,6 +12,7 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         HardenDllLoading();
+        Loc.Set(StorageScanner.UI.SettingsStore.GetString("language") ?? Loc.SystemDefault);
 
         // Formats de nombres et de dates selon la langue de Windows (WPF utilise en-US par défaut)
         FrameworkElement.LanguageProperty.OverrideMetadata(typeof(FrameworkElement),
@@ -19,7 +20,7 @@ public partial class App : Application
 
         DispatcherUnhandledException += (_, args) =>
         {
-            MessageBox.Show(args.Exception.Message, "Erreur inattendue", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(args.Exception.Message, Loc.T("unexpectedError"), MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
         StorageScanner.UI.ThemeManager.LoadSaved();
@@ -50,7 +51,7 @@ public partial class App : Application
 
     private static bool Has(string[] args, string flag) => args.Any(a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
 
-    private const string Title = "PrimaFiles — installation";
+    private static string Title => Loc.T("installTitle");
 
     private static void Info(string text) => MessageBox.Show(text, Title, MessageBoxButton.OK, MessageBoxImage.Information);
 
@@ -68,14 +69,8 @@ public partial class App : Application
         if (StorageScanner.UI.InstallPromptStore.WasDeclined(key)) return false;
 
         string text = installed is null
-            ? "Installer PrimaFiles sur cet ordinateur ?\n\n"
-              + "•  Copie dans C:\\Program Files\\PrimaFiles (dossier protégé)\n"
-              + "•  Raccourci dans le menu Démarrer\n"
-              + "•  Plus d'alerte de Windows au lancement\n"
-              + "•  Désinstallation depuis Paramètres > Applications\n\n"
-              + "Oui : installer (droits administrateur demandés)\nNon : utiliser sans installer"
-            : $"La version {installed.ToString(3)} de PrimaFiles est installée.\n\n"
-              + $"Mettre à jour l'installation vers la version {current.ToString(3)} ?";
+            ? Loc.T("installAsk")
+            : Loc.F("updateAsk", installed.ToString(3), current.ToString(3));
         if (MessageBox.Show(text, Title, MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
         {
             StorageScanner.UI.InstallPromptStore.Decline(key);
@@ -86,11 +81,10 @@ public partial class App : Application
         if (code != 0)
         {
             // Erreur : déjà affichée par l'instance administrateur
-            if (code is null) Info("Installation annulée : PrimaFiles va s'ouvrir sans être installé.");
+            if (code is null) Info(Loc.T("installCancelled"));
             return false;
         }
-        Info($"PrimaFiles {current.ToString(3)} est installé dans {Installation.Dir}.\n\n"
-             + "Il est disponible dans le menu Démarrer. Vous pouvez supprimer le fichier téléchargé.");
+        Info(Loc.F("installedFull", current.ToString(3), Installation.Dir));
         Process.Start(new ProcessStartInfo(Installation.InstalledExe) { UseShellExecute = false, WorkingDirectory = Installation.Dir });
         return true;
     }
@@ -100,42 +94,42 @@ public partial class App : Application
         if (!Elevation.IsElevated)
         {
             var code = Elevation.RunElevatedAndWait(quiet ? ["--install", "--elevated", "--quiet"] : ["--install", "--elevated"]);
-            if (!quiet && code == 0) Info($"PrimaFiles est installé dans {Installation.Dir}.");
+            if (!quiet && code == 0) Info(Loc.F("installedShort", Installation.Dir));
             return code ?? 1223;
         }
         try
         {
             Installation.Install();
-            if (!quiet && !child) Info($"PrimaFiles est installé dans {Installation.Dir}.");
+            if (!quiet && !child) Info(Loc.F("installedShort", Installation.Dir));
             return 0;
         }
         catch (Exception ex)
         {
-            if (!quiet) Error("Installation impossible : " + ex.Message);
+            if (!quiet) Error(Loc.F("installFailed", ex.Message));
             return 1;
         }
     }
 
     private static int UninstallCommand(bool quiet, bool child)
     {
-        if (!quiet && !child && MessageBox.Show("Désinstaller PrimaFiles ?\n\nVos réglages (historique, thème) sont conservés.",
-                "PrimaFiles — désinstallation", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+        if (!quiet && !child && MessageBox.Show(Loc.T("uninstallAsk"),
+                Loc.T("uninstallTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
             return 1602; // ERROR_INSTALL_USEREXIT
         if (!Elevation.IsElevated)
         {
             var code = Elevation.RunElevatedAndWait(quiet ? ["--uninstall", "--elevated", "--quiet"] : ["--uninstall", "--elevated"]);
-            if (!quiet && code == 0) Info("PrimaFiles a été désinstallé.");
+            if (!quiet && code == 0) Info(Loc.T("uninstalled"));
             return code ?? 1223;
         }
         try
         {
             Installation.Uninstall();
-            if (!quiet && !child) Info("PrimaFiles a été désinstallé.");
+            if (!quiet && !child) Info(Loc.T("uninstalled"));
             return 0;
         }
         catch (Exception ex)
         {
-            if (!quiet) Error("Désinstallation impossible : " + ex.Message);
+            if (!quiet) Error(Loc.F("uninstallFailed", ex.Message));
             return 1;
         }
     }
