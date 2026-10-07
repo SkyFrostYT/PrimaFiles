@@ -80,8 +80,14 @@ Remove-Item $cer
 - **Arborescence** dans l'ordre de l'Explorateur Windows (tri naturel), ou triée par taille, nombre de fichiers ou date. Barres vert / jaune / rouge selon la part occupée ; vrai taux d'occupation du volume (quota inclus) sur la ligne racine.
 - **Repères** : logo Windows = élément système · triangle = à ne pas supprimer · œil barré = dossier inaccessible.
 - **Fichiers suspects** (bouclier rouge = suspect, orange = à vérifier) : repérés pendant l'analyse par des indices typiques des logiciels malveillants : double extension (`facture.pdf.exe`), caractères invisibles qui masquent la vraie extension, nom de processus Windows hors de Windows (faux `svchost.exe`), extensions et notes de rançongiciel, scripts / économiseurs d'écran dans Temp, Téléchargements, Corbeille, Public ou Démarrage, programmes cachés. Onglet dédié avec bandeau d'alerte, bouclier sur les dossiers qui en contiennent, et **vérification à la demande par l'antivirus installé** (WithSecure / F-Secure, ou Microsoft Defender). Ces indices ne sont pas une preuve : seul l'antivirus confirme une menace.
+- **Recherche de dossier** (Ctrl+F) : par nom, dans toute l'arborescence analysée ; Entrée / Maj+Entrée pour passer d'un résultat à l'autre.
+- **Dossiers inactifs** : dossiers sans aucune activité depuis 1, 2, 3, 5 ou 10 ans, du plus gros au plus petit — candidats à l'archivage.
+- **Maniabilité** : glisser-déposer d'un dossier sur la fenêtre, **« Analyser avec PrimaFiles »** dans le clic droit de l'Explorateur
+  (version installée ; sous Windows 11 : *Afficher plus d'options*), fenêtre **Propriétés** de Windows depuis chaque liste,
+  raccourcis clavier (liste dans ⚙ Paramètres), progression dans la barre des tâches et clignotement à la fin d'une longue analyse,
+  réglages mémorisés.
 - **Gros fichiers**, **types de fichiers**, **doublons** (taille → empreinte partielle → SHA-256), **erreurs**, **export CSV** pour Excel.
-- **Mode administrateur** : relance avec élévation (UAC) et privilège de sauvegarde en lecture seule pour lister les dossiers protégés. Les lecteurs réseau mappés peuvent ne pas être visibles dans ce mode.
+- **Mode administrateur** : relance avec élévation (UAC) et privilège de sauvegarde en lecture seule pour lister les dossiers protégés. Les lecteurs réseau de la session normale y sont reconnectés automatiquement (connexion temporaire, identifiants Windows actuels).
 - **Serveur entier** : saisir `\\serveur` analyse tous ses partages (partages d'administration C$, ADMIN$… exclus).
 - **Confidentialité** : le nom du serveur des lecteurs réseau n'est jamais affiché, seulement le nom du partage.
 

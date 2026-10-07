@@ -203,6 +203,59 @@ public static class AppData
     }
 }
 
+/// <summary>Réglages simples « clé=valeur » (%LOCALAPPDATA%\PrimaFiles\settings.txt). Valeurs lues avec vérification :
+/// un fichier modifié à la main ou corrompu ne fait que remettre les valeurs par défaut.</summary>
+public static class SettingsStore
+{
+    private static readonly string FilePath = AppData.File("settings.txt");
+    private static readonly Dictionary<string, string> Values = Load();
+
+    private static Dictionary<string, string> Load()
+    {
+        var d = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        try
+        {
+            if (!File.Exists(FilePath)) return d;
+            foreach (var line in File.ReadLines(FilePath).Take(100))
+            {
+                int eq = line.IndexOf('=');
+                if (eq > 0 && line.Length < 1000) d[line[..eq].Trim()] = line[(eq + 1)..].Trim();
+            }
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+        return d;
+    }
+
+    public static int GetInt(string key, int fallback, int min, int max) =>
+        Values.TryGetValue(key, out var v) && int.TryParse(v, NumberStyles.Integer, CultureInfo.InvariantCulture, out int i)
+            ? Math.Clamp(i, min, max) : fallback;
+
+    public static double GetDouble(string key, double fallback, double min, double max) =>
+        Values.TryGetValue(key, out var v) && double.TryParse(v, NumberStyles.Float, CultureInfo.InvariantCulture, out double x)
+        && double.IsFinite(x) ? Math.Clamp(x, min, max) : fallback;
+
+    public static bool GetBool(string key, bool fallback) =>
+        Values.TryGetValue(key, out var v) && bool.TryParse(v, out bool b) ? b : fallback;
+
+    public static void Set(string key, IFormattable value) => Set(key, value.ToString(null, CultureInfo.InvariantCulture));
+
+    public static void Set(string key, bool value) => Set(key, value ? "true" : "false");
+
+    private static void Set(string key, string value)
+    {
+        Values[key] = value;
+        if (!AppData.CanWrite) return;
+        try
+        {
+            Directory.CreateDirectory(AppData.Dir);
+            File.WriteAllLines(FilePath, Values.Select(kv => $"{kv.Key}={kv.Value}"));
+        }
+        catch (IOException) { }
+        catch (UnauthorizedAccessException) { }
+    }
+}
+
 /// <summary>Copies de PrimaFiles (chemin + version) pour lesquelles l'utilisateur a refusé l'installation :
 /// la question n'est plus reposée pour ce fichier-là.</summary>
 public static class InstallPromptStore

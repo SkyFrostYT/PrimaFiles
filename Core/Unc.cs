@@ -71,6 +71,104 @@ public static class Unc
         return result;
     }
 
+    // ---- Lecteurs réseau en mode administrateur ----
+    // Windows sépare la session administrateur (UAC) de la session normale : les lecteurs réseau connectés dans la
+    // session normale n'y existent pas. L'instance normale transmet ses lecteurs (« --drive-map U=\\serveur\partage »),
+    // l'instance administrateur les reconnecte de son côté, temporairement et avec les identifiants Windows actuels.
+
+    /// <summary>Lecteurs réseau visibles dans la session courante : lettre → chemin UNC.</summary>
+    public static Dictionary<char, string> GetMappedDrives()
+    {
+        var map = new Dictionary<char, string>();
+        foreach (var d in DriveInfo.GetDrives())
+        {
+            if (d.DriveType != DriveType.Network) continue;
+            char letter = char.ToUpperInvariant(d.Name[0]);
+            if (GetMappedUnc($"{letter}:") is { } unc && IsValidUncShare(unc)) map[letter] = unc.TrimEnd('\\');
+        }
+        return map;
+    }
+
+    /// <summary>Lecteurs réseau permanents de l'utilisateur (reconnectés à chaque ouverture de session).</summary>
+    public static Dictionary<char, string> GetPersistentMappings()
+    {
+        var map = new Dictionary<char, string>();
+        try
+        {
+            using var network = Microsoft.Win32.Registry.CurrentUser.OpenSubKey("Network");
+            if (network is null) return map;
+            foreach (var name in network.GetSubKeyNames())
+            {
+                if (name.Length != 1 || !char.IsAsciiLetter(name[0])) continue;
+                using var key = network.OpenSubKey(name);
+                if (key?.GetValue("RemotePath") is string unc && IsValidUncShare(unc))
+                    map[char.ToUpperInvariant(name[0])] = unc.TrimEnd('\\');
+            }
+        }
+        catch (Exception ex) when (ex is System.Security.SecurityException or UnauthorizedAccessException or IOException) { }
+        return map;
+    }
+
+    /// <summary>Lit les « --drive-map X=\\serveur\partage » transmis par l'instance normale (valeurs vérifiées).</summary>
+    public static Dictionary<char, string> ParseDriveMapArgs(string[] args)
+    {
+        var map = new Dictionary<char, string>();
+        for (int i = 0; i + 1 < args.Length; i++)
+        {
+            if (!string.Equals(args[i], "--drive-map", StringComparison.OrdinalIgnoreCase)) continue;
+            string v = args[i + 1];
+            if (v.Length > 3 && char.IsAsciiLetter(v[0]) && v[1] == '=' && IsValidUncShare(v[2..]))
+                map[char.ToUpperInvariant(v[0])] = v[2..].TrimEnd('\\');
+        }
+        return map;
+    }
+
+    /// <summary>Connecte, pour ce processus seulement (connexion temporaire, jamais mémorisée), les lettres qui
+    /// n'existent pas encore. Les échecs (serveur injoignable…) sont ignorés : la lettre n'apparaît simplement pas.</summary>
+    public static int ReconnectMissing(IReadOnlyDictionary<char, string> mappings)
+    {
+        var present = new HashSet<char>(DriveInfo.GetDrives().Select(d => char.ToUpperInvariant(d.Name[0])));
+        var missing = mappings.Where(m => !present.Contains(m.Key)).ToList();
+        int ok = 0;
+        Parallel.ForEach(missing, new ParallelOptions { MaxDegreeOfParallelism = 8 }, m =>
+        {
+            var res = new NetResource { Type = ResourceTypeDisk, LocalName = $"{m.Key}:", RemoteName = m.Value };
+            if (WNetAddConnection2W(ref res, null, null, ConnectTemporary) == 0) Interlocked.Increment(ref ok);
+        });
+        return ok;
+    }
+
+    /// <summary>« \\serveur\partage » (éventuellement suivi d'un sous-dossier), sans caractère interdit.</summary>
+    private static bool IsValidUncShare(string unc)
+    {
+        if (!unc.StartsWith(@"\\", StringComparison.Ordinal) || unc.StartsWith(@"\\?\", StringComparison.Ordinal)
+            || unc.StartsWith(@"\\.\", StringComparison.Ordinal) || unc.Length > 260) return false;
+        var parts = unc[2..].TrimEnd('\\').Split('\\');
+        if (parts.Length < 2 || parts[0].Length == 0) return false;
+        foreach (var p in parts)
+            if (p.Length == 0 || p.Trim('.').Length == 0 || p.AsSpan().IndexOfAny("/:*?\"<>|") >= 0 || p.Any(char.IsControl)) return false;
+        return true;
+    }
+
+    private const int ResourceTypeDisk = 1;
+    private const int ConnectTemporary = 4;
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
+    private struct NetResource
+    {
+        public int Scope;
+        public int Type;
+        public int DisplayType;
+        public int Usage;
+        public string? LocalName;
+        public string? RemoteName;
+        public string? Comment;
+        public string? Provider;
+    }
+
+    [DllImport("mpr.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    private static extern int WNetAddConnection2W(ref NetResource resource, string? password, string? userName, int flags);
+
     private static bool IsValidShareName(string? name) =>
         !string.IsNullOrWhiteSpace(name) && name.Length <= 80 && name.Trim('.').Length > 0
         && name.AsSpan().IndexOfAny("\\/:*?\"<>|") < 0 && !name.Any(char.IsControl);

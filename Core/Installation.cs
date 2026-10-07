@@ -73,9 +73,36 @@ public static class Installation
         RegisterShortcutAndUninstall();
     }
 
+    /// <summary>Menu contextuel de l'Explorateur (dossier, lecteur, fond d'un dossier ouvert).</summary>
+    private static readonly string[] ShellVerbKeys =
+    [
+        @"SOFTWARE\Classes\Directory\shell\PrimaFiles",
+        @"SOFTWARE\Classes\Drive\shell\PrimaFiles",
+        @"SOFTWARE\Classes\Directory\Background\shell\PrimaFiles",
+    ];
+
+    private static void RegisterExplorerMenu()
+    {
+        foreach (var path in ShellVerbKeys)
+        {
+            using var verb = Registry.LocalMachine.CreateSubKey(path, writable: true);
+            verb.SetValue("", "Analyser avec PrimaFiles");
+            verb.SetValue("Icon", $"\"{InstalledExe}\",0");
+            using var command = verb.CreateSubKey("command", writable: true);
+            // %V : chemin du dossier, toujours entre guillemets ; PrimaFiles ne fait que le lire (lecture seule)
+            command.SetValue("", $"\"{InstalledExe}\" --scan \"%V\"");
+        }
+    }
+
+    private static void UnregisterExplorerMenu()
+    {
+        foreach (var path in ShellVerbKeys) Registry.LocalMachine.DeleteSubKeyTree(path, throwOnMissingSubKey: false);
+    }
+
     private static void RegisterShortcutAndUninstall()
     {
         CreateShortcut();
+        RegisterExplorerMenu();
         using var key = Registry.LocalMachine.CreateSubKey(UninstallKey, writable: true);
         string exe = InstalledExe;
         key.SetValue("DisplayName", "PrimaFiles");
@@ -119,6 +146,7 @@ public static class Installation
         StopInstalledInstances();
         try { File.Delete(ShortcutPath); } catch (IOException) { }
         Registry.LocalMachine.DeleteSubKeyTree(UninstallKey, throwOnMissingSubKey: false);
+        UnregisterExplorerMenu();
         RemoveSelfSignedCertificates();
 
         if (!Directory.Exists(Dir)) return;

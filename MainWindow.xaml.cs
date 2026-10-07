@@ -21,6 +21,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        TreemapToggle.IsChecked = SettingsStore.GetBool("treemap", true);
         FitToWorkArea();
         DataContext = _vm;
         _vm.RevealRowRequested += (row, emphasize) => RevealRow(row, emphasize);
@@ -31,13 +32,148 @@ public partial class MainWindow : Window
         Closing += (_, _) => _vm.CancelAll();
         StateChanged += (_, _) => UpdateWindowState();
         SourceInitialized += (_, _) => EnableRoundedCorners();
+        TaskbarItemInfo = new System.Windows.Shell.TaskbarItemInfo();
         Loaded += (_, _) =>
         {
             UpdateTreemapRow();
             PathBox.Focus();
             PathBox.CaretIndex = PathBox.Text.Length;
+            if (_vm.StartScanOnLoad && _vm.ScanCommand.CanExecute(null)) _vm.ScanCommand.Execute(null);
         };
     }
+
+    // ---- Raccourcis clavier ----
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        bool ctrl = Keyboard.Modifiers == ModifierKeys.Control;
+        switch (e.Key)
+        {
+            case Key.F when ctrl && _vm.ShowResults:
+                _vm.SelectedTabIndex = 0;
+                FolderSearchBox.Focus();
+                FolderSearchBox.SelectAll();
+                break;
+            case Key.L when ctrl:
+                PathBox.Focus();
+                PathBox.SelectAll();
+                break;
+            case Key.O when ctrl:
+                Execute(_vm.BrowseCommand);
+                break;
+            case Key.E when ctrl:
+                Execute(_vm.ExportCommand);
+                break;
+            case Key.F5:
+                // Relance l'analyse du dossier affiché (ou de celui saisi)
+                if (!_vm.IsBusy && _vm.ScanTarget.Length > 0) _vm.RootPath = _vm.ScanTarget;
+                Execute(_vm.ScanCommand);
+                break;
+            case Key.Escape when _vm.IsScanning:
+                Execute(_vm.CancelCommand);
+                break;
+            case Key.Escape when _vm.IsFindingDuplicates:
+                Execute(_vm.CancelDuplicatesCommand);
+                break;
+            case >= Key.D1 and <= Key.D7 when ctrl && _vm.ShowResults:
+                _vm.SelectedTabIndex = e.Key - Key.D1;
+                break;
+            default:
+                return;
+        }
+        e.Handled = true;
+    }
+
+    private static void Execute(ICommand command)
+    {
+        if (command.CanExecute(null)) command.Execute(null);
+    }
+
+    private void FolderSearchBox_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Enter)
+        {
+            _vm.FindFolder(Keyboard.Modifiers.HasFlag(ModifierKeys.Shift) ? -1 : +1);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && FolderSearchBox.Text.Length > 0)
+        {
+            _vm.FolderSearchText = "";
+            e.Handled = true;
+        }
+    }
+
+    // ---- Glisser-déposer d'un dossier ou d'un lecteur sur la fenêtre ----
+
+    private static string? DroppedFolder(DragEventArgs e) =>
+        e.Data.GetDataPresent(DataFormats.FileDrop) && e.Data.GetData(DataFormats.FileDrop) is string[] { Length: 1 } paths
+        && Directory.Exists(SafePath.ForIo(paths[0])) ? paths[0] : null;
+
+    private void Window_PreviewDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return; // texte : laissé au champ de saisie
+        e.Effects = !_vm.IsBusy && DroppedFolder(e) is not null ? DragDropEffects.Link : DragDropEffects.None;
+        e.Handled = true;
+    }
+
+    private void Window_PreviewDrop(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop)) return;
+        e.Handled = true;
+        if (!_vm.IsBusy && DroppedFolder(e) is { } folder) _vm.ScanFrom(folder);
+    }
+
+    // ---- Barre des tâches : progression et signal de fin ----
+
+    private bool _wasBusy;
+
+    private void UpdateTaskbar()
+    {
+        var info = TaskbarItemInfo;
+        if (_vm.IsFindingDuplicates)
+        {
+            info.ProgressState = System.Windows.Shell.TaskbarItemProgressState.Normal;
+            info.ProgressValue = _vm.DupPercent / 100;
+        }
+        else
+        {
+            info.ProgressState = _vm.IsScanning ? System.Windows.Shell.TaskbarItemProgressState.Indeterminate
+                                                : System.Windows.Shell.TaskbarItemProgressState.None;
+        }
+
+        // Fin d'une longue opération pendant que l'utilisateur fait autre chose : le bouton clignote
+        if (_wasBusy && !_vm.IsBusy && !IsActive) FlashTaskbarButton();
+        _wasBusy = _vm.IsBusy;
+    }
+
+    private void FlashTaskbarButton()
+    {
+        var info = new FLASHWINFO
+        {
+            cbSize = (uint)Marshal.SizeOf<FLASHWINFO>(),
+            hwnd = new WindowInteropHelper(this).Handle,
+            dwFlags = FLASHW_TRAY | FLASHW_TIMERNOFG,
+            uCount = 5,
+        };
+        _ = FlashWindowEx(ref info);
+    }
+
+    private const uint FLASHW_TRAY = 2;
+    private const uint FLASHW_TIMERNOFG = 12;
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct FLASHWINFO
+    {
+        public uint cbSize;
+        public IntPtr hwnd;
+        public uint dwFlags;
+        public uint uCount;
+        public uint dwTimeout;
+    }
+
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool FlashWindowEx(ref FLASHWINFO info);
 
     // ---- Fenêtre (barre de titre personnalisée) ----
 
@@ -101,11 +237,14 @@ public partial class MainWindow : Window
     private void Vm_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (e.PropertyName == nameof(MainViewModel.ShowResults)) UpdateTreemapRow();
+        if (e.PropertyName is nameof(MainViewModel.IsBusy) or nameof(MainViewModel.DupPercent)) UpdateTaskbar();
     }
 
     private void TreemapToggle_Changed(object sender, RoutedEventArgs e)
     {
-        if (IsLoaded) UpdateTreemapRow();
+        if (!IsLoaded) return;
+        SettingsStore.Set("treemap", TreemapToggle.IsChecked == true);
+        UpdateTreemapRow();
     }
 
     private void UpdateTreemapRow()
@@ -144,12 +283,16 @@ public partial class MainWindow : Window
     private void RevealRow(TreeRow row) => RevealRow(row, false);
 
     /// <param name="emphasize">Centre la ligne dans la grille et la surligne brièvement (clic sur la carte).</param>
+    private int _revealGeneration;
+
     private void RevealRow(TreeRow row, bool emphasize)
     {
         TreeGrid.SelectedItem = row;
+        int generation = ++_revealGeneration;
         // La liste vient souvent d'être reconstruite : on attend que la grille ait régénéré ses lignes.
         Dispatcher.BeginInvoke(DispatcherPriority.Loaded, () =>
         {
+            if (generation != _revealGeneration) return; // une demande plus récente l'emporte (recherche, clic sur la carte)
             if (!ReferenceEquals(TreeGrid.SelectedItem, row)) TreeGrid.SelectedItem = row;
             TreeGrid.ScrollIntoView(row);
             if (!emphasize) return;
@@ -256,6 +399,7 @@ public partial class MainWindow : Window
         FolderFileItem f => (f.FullPath, true),
         SuspectItem s => (s.FullPath, true),
         ScanError err => (err.Path, false),
+        StaleFolder s => (s.FullPath, false),
         _ => (null, false),
     };
 
@@ -284,6 +428,22 @@ public partial class MainWindow : Window
         }
     }
 
+    /// <summary>Fenêtre « Propriétés » de Windows (taille sur disque, sécurité, versions précédentes…).</summary>
+    private void Properties_Click(object sender, RoutedEventArgs e)
+    {
+        var (path, _) = PathOf(ContextItem(sender));
+        if (path is null || !Path.IsPathFullyQualified(path)) return;
+        if (SafePath.IsAmbiguousPath(path)) path = SafePath.NearestUnambiguousFolder(path); // Windows ouvrirait un autre élément
+        if (!SHObjectProperties(new WindowInteropHelper(this).Handle, SHOP_FILEPATH, path, null))
+            MessageBox.Show(this, "Impossible d'afficher les propriétés de cet élément.", "Propriétés", MessageBoxButton.OK, MessageBoxImage.Warning);
+    }
+
+    private const uint SHOP_FILEPATH = 2;
+
+    [DllImport("shell32.dll", CharSet = CharSet.Unicode, ExactSpelling = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool SHObjectProperties(IntPtr hwnd, uint objectType, string objectName, string? propertyPage);
+
     private void CopyPath_Click(object sender, RoutedEventArgs e)
     {
         var (path, _) = PathOf(ContextItem(sender));
@@ -294,6 +454,7 @@ public partial class MainWindow : Window
     {
         if (ContextItem(sender) is FileEntry f) _vm.ShowInTree(f.Dir);
         else if (ContextItem(sender) is SuspectItem s) _vm.ShowInTree(s.Entry.Dir);
+        else if (ContextItem(sender) is StaleFolder st) _vm.ShowInTree(st.Node);
     }
 
     private async void CheckWithAv_Click(object sender, RoutedEventArgs e)
@@ -322,6 +483,11 @@ public partial class MainWindow : Window
                 AvVerdict.Clean => MessageBoxImage.Information,
                 _ => MessageBoxImage.Warning,
             });
+    }
+
+    private void StaleGrid_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (FindAncestor<DataGridRow>(e.OriginalSource as DependencyObject) is { DataContext: StaleFolder s }) _vm.ShowInTree(s.Node);
     }
 
     private void SuspectsKpi_Click(object sender, MouseButtonEventArgs e)

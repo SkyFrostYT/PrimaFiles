@@ -9,7 +9,9 @@
         Background="{DynamicResource WindowBg}"
         Foreground="{DynamicResource TextBr}"
         FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="13"
-        UseLayoutRounding="True">
+        UseLayoutRounding="True"
+        AllowDrop="True" PreviewDragOver="Window_PreviewDragOver" PreviewDrop="Window_PreviewDrop"
+        PreviewKeyDown="Window_PreviewKeyDown">
 
     <WindowChrome.WindowChrome>
         <WindowChrome CaptionHeight="40" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False" />
@@ -47,6 +49,9 @@
             <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
             </MenuItem>
+            <MenuItem Header="Propriétés" Click="Properties_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
+            </MenuItem>
             <Separator />
             <MenuItem Header="Centrer la carte sur ce dossier" Click="ZoomTreemapHere_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xF0E2;" /></MenuItem.Icon>
@@ -62,6 +67,9 @@
             <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
             </MenuItem>
+            <MenuItem Header="Propriétés" Click="Properties_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
+            </MenuItem>
             <MenuItem Header="Afficher dans l'arborescence" Click="ShowInTree_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" /></MenuItem.Icon>
             </MenuItem>
@@ -70,12 +78,29 @@
                 <MenuItem.Icon><Image Source="{StaticResource ThreatShield}" Width="15" Height="15" /></MenuItem.Icon>
             </MenuItem>
         </ContextMenu>
+        <ContextMenu x:Key="StaleMenu" x:Shared="False">
+            <MenuItem Header="Ouvrir dans l'Explorateur" Click="OpenInExplorer_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Afficher dans l'arborescence" Click="ShowInTree_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8B7;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Propriétés" Click="Properties_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
+            </MenuItem>
+        </ContextMenu>
         <ContextMenu x:Key="SimpleMenu" x:Shared="False">
             <MenuItem Header="Afficher dans l'Explorateur" Click="OpenInExplorer_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE838;" /></MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="Copier le chemin" Click="CopyPath_Click">
                 <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE8C8;" /></MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="Propriétés" Click="Properties_Click">
+                <MenuItem.Icon><TextBlock Style="{StaticResource Icon}" Text="&#xE946;" /></MenuItem.Icon>
             </MenuItem>
             <Separator />
             <MenuItem Header="Vérifier avec l'antivirus" Click="CheckWithAv_Click">
@@ -135,7 +160,7 @@
                     </Button>
                     <Border Background="{DynamicResource AdminBadgeBg}" CornerRadius="5" Padding="9,3" Margin="0,0,8,0" VerticalAlignment="Center"
                             Visibility="{Binding IsElevated, Converter={StaticResource BoolToVis}}"
-                            ToolTip="L'application tourne avec les droits administrateur. Attention : les lecteurs réseau mappés peuvent ne pas être visibles dans ce mode.">
+                            ToolTip="L'application tourne avec les droits administrateur. Les lecteurs réseau de votre session y sont reconnectés automatiquement.">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Style="{StaticResource Icon}" Text="&#xEA18;" FontSize="12" Foreground="{DynamicResource WarningBr}" Margin="0,0,6,0" />
                             <TextBlock Text="Administrateur" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource WarningBr}" />
@@ -270,6 +295,33 @@
                                     <TextBox DockPanel.Dock="Right" Width="70" Height="30" Text="{Binding DupThreads}" HorizontalContentAlignment="Right" />
                                     <TextBlock Text="Doublons : lectures parallèles" VerticalAlignment="Center" />
                                 </DockPanel>
+                                <TextBlock Text="Réglages mémorisés pour les prochaines fois" Style="{StaticResource Subtle}" FontSize="11.5" Margin="0,4,0,0" />
+
+                                <Rectangle Height="1" Fill="{DynamicResource BorderBr}" Margin="0,14" />
+                                <TextBlock Text="Raccourcis clavier" Style="{StaticResource SectionTitle}" Margin="0,0,0,8" />
+                                <Grid TextElement.FontSize="12">
+                                    <Grid.Resources>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource Subtle}">
+                                            <Setter Property="Margin" Value="0,2" />
+                                        </Style>
+                                    </Grid.Resources>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="92" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                        <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Grid.Row="0" Text="Entrée / F5" FontWeight="SemiBold" /><TextBlock Grid.Row="0" Grid.Column="1" Text="Analyser / relancer l'analyse" />
+                                    <TextBlock Grid.Row="1" Text="Échap" FontWeight="SemiBold" /><TextBlock Grid.Row="1" Grid.Column="1" Text="Arrêter l'analyse en cours" />
+                                    <TextBlock Grid.Row="2" Text="Ctrl+F" FontWeight="SemiBold" /><TextBlock Grid.Row="2" Grid.Column="1" Text="Rechercher un dossier" />
+                                    <TextBlock Grid.Row="3" Text="Ctrl+L" FontWeight="SemiBold" /><TextBlock Grid.Row="3" Grid.Column="1" Text="Saisir un chemin" />
+                                    <TextBlock Grid.Row="4" Text="Ctrl+O" FontWeight="SemiBold" /><TextBlock Grid.Row="4" Grid.Column="1" Text="Parcourir…" />
+                                    <TextBlock Grid.Row="5" Text="Ctrl+E" FontWeight="SemiBold" /><TextBlock Grid.Row="5" Grid.Column="1" Text="Exporter l'onglet en CSV" />
+                                    <TextBlock Grid.Row="6" Text="Ctrl+1 … 7" FontWeight="SemiBold" /><TextBlock Grid.Row="6" Grid.Column="1" Text="Changer d'onglet" />
+                                    <TextBlock Grid.Row="7" Text="Glisser" FontWeight="SemiBold" /><TextBlock Grid.Row="7" Grid.Column="1" Text="Déposer un dossier pour l'analyser" />
+                                </Grid>
                             </StackPanel>
                         </Border>
                     </Popup>
@@ -472,8 +524,25 @@
                                                 </StackPanel>
                                             </Border>
                                         </StackPanel>
-                                        <TextBlock HorizontalAlignment="Right" Style="{StaticResource Subtle}" FontSize="11.5" Foreground="{DynamicResource FaintTextBr}"
-                                                   Text="Double-clic ou ← → pour déplier · clic droit pour plus d'actions" />
+                                        <!-- Recherche d'un dossier par son nom (Ctrl+F, Entrée = suivant, Maj+Entrée = précédent) -->
+                                        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"
+                                                    ToolTip="Double-clic ou ← → pour déplier · clic droit pour plus d'actions">
+                                            <TextBlock Text="{Binding FolderSearchStatus}" Style="{StaticResource Subtle}" FontSize="11.5"
+                                                       VerticalAlignment="Center" Margin="0,0,8,0" />
+                                            <Grid Width="230">
+                                                <TextBox x:Name="FolderSearchBox" Height="30" Padding="30,0,8,0"
+                                                         Text="{Binding FolderSearchText, UpdateSourceTrigger=PropertyChanged}"
+                                                         Tag="Rechercher un dossier (Ctrl+F)" KeyDown="FolderSearchBox_KeyDown" />
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE721;" FontSize="12" Foreground="{DynamicResource SubtleTextBr}"
+                                                           Margin="10,0,0,0" HorizontalAlignment="Left" IsHitTestVisible="False" />
+                                            </Grid>
+                                            <Button Margin="4,0,0,0" Height="30" Padding="8,0" Command="{Binding FindPreviousFolderCommand}" ToolTip="Précédent (Maj+Entrée)">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE70E;" FontSize="11" />
+                                            </Button>
+                                            <Button Margin="4,0,0,0" Height="30" Padding="8,0" Command="{Binding FindNextFolderCommand}" ToolTip="Suivant (Entrée)">
+                                                <TextBlock Style="{StaticResource Icon}" Text="&#xE70D;" FontSize="11" />
+                                            </Button>
+                                        </StackPanel>
                                     </Grid>
 
                                     <DataGrid x:Name="TreeGrid"
@@ -822,6 +891,39 @@
                                 </DataGrid.Columns>
                             </DataGrid>
                         </TabItem>
+
+                        <!-- 6 : Dossiers inactifs -->
+                        <TabItem>
+                            <TabItem.Header>
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Style="{StaticResource TabIcon}" Text="&#xE81C;" />
+                                    <TextBlock Text="Dossiers inactifs" />
+                                </StackPanel>
+                            </TabItem.Header>
+                            <DockPanel>
+                                <DockPanel DockPanel.Dock="Top" Margin="14,10,14,6">
+                                    <StackPanel Orientation="Horizontal" DockPanel.Dock="Left">
+                                        <TextBlock Text="Aucun fichier modifié depuis" Style="{StaticResource Subtle}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <ComboBox ItemsSource="{Binding StaleYearChoices}" SelectedItem="{Binding StaleYears}" Width="70" Height="30"
+                                                  VerticalContentAlignment="Center" />
+                                        <TextBlock Text="an(s)" Style="{StaticResource Subtle}" VerticalAlignment="Center" Margin="8,0,16,0" />
+                                    </StackPanel>
+                                    <TextBlock Text="{Binding StaleSummary}" Style="{StaticResource Subtle}" VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis" ToolTip="{Binding StaleSummary}" />
+                                </DockPanel>
+                                <DataGrid ItemsSource="{Binding StaleFolders}" ContextMenu="{StaticResource StaleMenu}" MouseDoubleClick="StaleGrid_MouseDoubleClick">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Dossier" Width="220" Binding="{Binding Name}" FontWeight="SemiBold" />
+                                        <DataGridTextColumn Header="Taille" Width="95" SortMemberPath="Size"
+                                                            Binding="{Binding Size, Converter={StaticResource Bytes}}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="Fichiers" Width="85" Binding="{Binding Files, StringFormat=N0}" ElementStyle="{StaticResource RightCell}" />
+                                        <DataGridTextColumn Header="Dernière modification" Width="150" SortMemberPath="NewestUtc"
+                                                            Binding="{Binding NewestUtc, Converter={StaticResource LocalDate}}" />
+                                        <DataGridTextColumn Header="Emplacement" Width="*" Binding="{Binding FullPath}" Foreground="{DynamicResource SubtleTextBr}" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </DockPanel>
+                        </TabItem>
                     </TabControl>
                 </Grid>
             </Border>
@@ -899,7 +1001,7 @@
             <!-- ============ Barre d'état ============ -->
             <Grid Grid.Row="6" Margin="20,0">
                 <TextBlock Text="{Binding StatusText}" Style="{StaticResource Subtle}" FontSize="12" TextTrimming="CharacterEllipsis" Margin="0,0,160,0" />
-                <TextBlock Text="PrimaFiles 1.2" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource FaintTextBr}" />
+                <TextBlock Text="{Binding AppVersionText}" HorizontalAlignment="Right" VerticalAlignment="Center" FontSize="11.5" Foreground="{DynamicResource FaintTextBr}" />
             </Grid>
         </Grid>
     </Border>

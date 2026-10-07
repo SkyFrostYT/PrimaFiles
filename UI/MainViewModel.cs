@@ -211,16 +211,28 @@ public sealed class MainViewModel : ObservableObject
             : _av.ScanAsync(path);
 
     public bool IsElevated => Elevation.IsElevated;
+    public string AppVersionText { get; } = "PrimaFiles " + Installation.CurrentVersion.ToString(3)
+        + (Installation.IsRunningInstalled ? "" : " (non installé)");
     public string ThemeGlyph => ThemeManager.IsDark ? "\xE706" : "\xE708"; // soleil / lune
     public string ThemeTooltip => ThemeManager.IsDark ? "Passer au thème clair" : "Passer au thème sombre";
 
-    /// <summary>Chemin transmis lors d'une relance en administrateur (--path "…").</summary>
+    /// <summary>Chemin transmis au lancement : relance en administrateur (--path "…") ou menu « Analyser avec
+    /// PrimaFiles » de l'Explorateur (--scan "…", l'analyse démarre aussitôt).</summary>
     private static string? InitialPathFromArgs()
     {
         var args = Environment.GetCommandLineArgs();
-        int i = Array.IndexOf(args, "--path");
-        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+        foreach (var flag in new[] { "--scan", "--path" })
+        {
+            int i = Array.FindIndex(args, a => string.Equals(a, flag, StringComparison.OrdinalIgnoreCase));
+            // « "C:\" » arrive sous la forme « C:" » (la barre finale échappe le guillemet) : guillemets retirés
+            if (i >= 0 && i + 1 < args.Length && args[i + 1].Trim().Trim('"') is { Length: > 0 and < 32_767 } p) return p;
+        }
+        return null;
     }
+
+    /// <summary>Vrai si l'analyse doit démarrer dès l'ouverture (menu contextuel de l'Explorateur).</summary>
+    public bool StartScanOnLoad { get; } =
+        Environment.GetCommandLineArgs().Any(a => string.Equals(a, "--scan", StringComparison.OrdinalIgnoreCase));
 
     public TreeModel Tree { get; } = new();
     public ObservableCollection<string> RecentPaths { get; } = [];
@@ -231,14 +243,26 @@ public sealed class MainViewModel : ObservableObject
     private string _rootPath;
     public string RootPath { get => _rootPath; set => Set(ref _rootPath, value); }
 
-    private int _threads = 16;
-    public int Threads { get => _threads; set => Set(ref _threads, Math.Clamp(value, 1, 128)); }
+    private int _threads = SettingsStore.GetInt("threads", 16, 1, 128);
+    public int Threads
+    {
+        get => _threads;
+        set { if (Set(ref _threads, Math.Clamp(value, 1, 128))) SettingsStore.Set("threads", _threads); }
+    }
 
-    private double _dupMinSizeMb = 1;
-    public double DupMinSizeMb { get => _dupMinSizeMb; set => Set(ref _dupMinSizeMb, Math.Max(0.001, value)); }
+    private double _dupMinSizeMb = SettingsStore.GetDouble("dupMinSizeMb", 1, 0.001, 1_000_000);
+    public double DupMinSizeMb
+    {
+        get => _dupMinSizeMb;
+        set { if (Set(ref _dupMinSizeMb, Math.Clamp(value, 0.001, 1_000_000))) SettingsStore.Set("dupMinSizeMb", _dupMinSizeMb); }
+    }
 
-    private int _dupThreads = 8;
-    public int DupThreads { get => _dupThreads; set => Set(ref _dupThreads, Math.Clamp(value, 1, 64)); }
+    private int _dupThreads = SettingsStore.GetInt("dupThreads", 8, 1, 64);
+    public int DupThreads
+    {
+        get => _dupThreads;
+        set { if (Set(ref _dupThreads, Math.Clamp(value, 1, 64))) SettingsStore.Set("dupThreads", _dupThreads); }
+    }
 
     private int _sortIndex;
     public int SortIndex
@@ -317,6 +341,10 @@ public sealed class MainViewModel : ObservableObject
         private set
         {
             if (!Set(ref _result, value)) return;
+            _searchMatches = null;
+            _searchIndex = -1;
+            FolderSearchStatus = "";
+            _ = RefreshStaleFoldersAsync();
             OnPropertyChanged(nameof(TopFiles));
             OnPropertyChanged(nameof(Extensions));
             OnPropertyChanged(nameof(Errors));
@@ -395,6 +423,113 @@ public sealed class MainViewModel : ObservableObject
         RevealRowRequested?.Invoke(row, true);
     }
 
+    // ---- Dossiers inactifs (aucun fichier modifié depuis N ans) ----
+
+    public static int[] StaleYearChoices { get; } = [1, 2, 3, 5, 10];
+
+    private int _staleYears = SettingsStore.GetInt("staleYears", 3, 1, 10);
+    public int StaleYears
+    {
+        get => _staleYears;
+        set
+        {
+            if (!Set(ref _staleYears, value)) return;
+            SettingsStore.Set("staleYears", value);
+            _ = RefreshStaleFoldersAsync();
+        }
+    }
+
+    private IReadOnlyList<StaleFolder> _staleFolders = [];
+    public IReadOnlyList<StaleFolder> StaleFolders { get => _staleFolders; private set => Set(ref _staleFolders, value); }
+
+    private string _staleSummary = "";
+    public string StaleSummary { get => _staleSummary; private set => Set(ref _staleSummary, value); }
+
+    private async Task RefreshStaleFoldersAsync()
+    {
+        if (Result is not { } r)
+        {
+            StaleFolders = [];
+            StaleSummary = "";
+            return;
+        }
+        var cutoff = DateTime.UtcNow.AddYears(-StaleYears);
+        int years = StaleYears;
+        var list = await Task.Run(() => UI.StaleFolders.Find(r.Root, cutoff));
+        if (!ReferenceEquals(r, Result) || years != StaleYears) return; // résultat périmé entre-temps
+        StaleFolders = list;
+        StaleSummary = list.Count == 0
+            ? $"Aucun dossier de 1 Mo ou plus sans modification depuis {years} an(s)."
+            : $"{list.Count:N0} dossier(s) sans aucune modification depuis {years} an(s) · {Format.Bytes(list.Sum(s => s.Size))} "
+              + "· candidats à l'archivage (vérifiez avant de déplacer ou supprimer quoi que ce soit)";
+    }
+
+    // ---- Recherche d'un dossier par son nom ----
+
+    private const int MaxSearchMatches = 50_000;
+    private string _folderSearchText = "";
+    private List<DirNode>? _searchMatches;
+    private string? _searchMatchesFor;
+    private int _searchIndex = -1;
+
+    public string FolderSearchText
+    {
+        get => _folderSearchText;
+        set
+        {
+            if (!Set(ref _folderSearchText, value)) return;
+            _searchMatches = null;
+            _searchIndex = -1;
+            FolderSearchStatus = "";
+        }
+    }
+
+    private string _folderSearchStatus = "";
+    public string FolderSearchStatus { get => _folderSearchStatus; private set => Set(ref _folderSearchStatus, value); }
+
+    public ICommand FindNextFolderCommand => _findNext ??= new RelayCommand(_ => FindFolder(+1), _ => CanSearch);
+    public ICommand FindPreviousFolderCommand => _findPrev ??= new RelayCommand(_ => FindFolder(-1), _ => CanSearch);
+    private ICommand? _findNext, _findPrev;
+    private bool CanSearch => Result is not null && !IsScanning && !string.IsNullOrWhiteSpace(FolderSearchText);
+
+    /// <summary>Dossier suivant / précédent dont le nom contient le texte recherché (ordre de l'arborescence Windows).</summary>
+    public void FindFolder(int direction)
+    {
+        if (Result is not { } r || string.IsNullOrWhiteSpace(FolderSearchText)) return;
+        string text = FolderSearchText.Trim();
+        if (_searchMatches is null || _searchMatchesFor != text)
+        {
+            _searchMatches = SearchFolders(r.Root, text);
+            _searchMatchesFor = text;
+            _searchIndex = -1;
+        }
+        if (_searchMatches.Count == 0)
+        {
+            FolderSearchStatus = "Aucun dossier trouvé";
+            return;
+        }
+        _searchIndex = ((_searchIndex + direction) % _searchMatches.Count + _searchMatches.Count) % _searchMatches.Count;
+        FolderSearchStatus = $"{_searchIndex + 1:N0} / {_searchMatches.Count:N0}" + (_searchMatches.Count >= MaxSearchMatches ? "+" : "");
+        ShowInTree(_searchMatches[_searchIndex]);
+    }
+
+    private static List<DirNode> SearchFolders(DirNode root, string text)
+    {
+        var matches = new List<DirNode>();
+        var stack = new Stack<DirNode>();
+        stack.Push(root);
+        while (stack.Count > 0 && matches.Count < MaxSearchMatches)
+        {
+            var n = stack.Pop();
+            if (n.Parent is not null && n.Name.Contains(text, StringComparison.CurrentCultureIgnoreCase)) matches.Add(n);
+            if (n.Children is not { Count: > 0 } ch) continue;
+            var sorted = ch.ToList();
+            sorted.Sort((a, b) => NaturalComparer.Instance.Compare(b.Name, a.Name)); // la pile inverse l'ordre
+            foreach (var c in sorted) stack.Push(c);
+        }
+        return matches;
+    }
+
     private void ResetToWelcome()
     {
         _folderCts?.Cancel();
@@ -416,8 +551,21 @@ public sealed class MainViewModel : ObservableObject
         KpiSizeSub = "";
     }
 
+    private static Task? s_reconnect;
+
+    /// <summary>Mode administrateur : reconnecte une fois les lecteurs réseau de la session normale (voir <see cref="Unc"/>).</summary>
+    private static Task ReconnectNetworkDrivesAsync() => s_reconnect ??= !Elevation.IsElevated
+        ? Task.CompletedTask
+        : Task.Run(() =>
+        {
+            var map = Unc.GetPersistentMappings();
+            foreach (var (k, v) in Unc.ParseDriveMapArgs(Environment.GetCommandLineArgs())) map[k] = v;
+            Unc.ReconnectMissing(map);
+        });
+
     private async Task LoadDrivesAsync()
     {
+        await ReconnectNetworkDrivesAsync();
         var drives = await Task.Run(() =>
         {
             var list = new List<DriveItem>();
@@ -456,6 +604,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task ScanAsync()
     {
+        await ReconnectNetworkDrivesAsync(); // lettre réseau demandée juste après le passage en administrateur
         var path = Scanner.NormalizeRoot(RootPath);
         if (path.Length == 0) return;
         AddRecent(path);
@@ -650,6 +799,7 @@ public sealed class MainViewModel : ObservableObject
             3 => "doublons",
             4 => "fichiers-suspects",
             5 => "erreurs",
+            6 => "dossiers-inactifs",
             _ => "arborescence",
         };
         var dlg = new SaveFileDialog
@@ -670,6 +820,7 @@ public sealed class MainViewModel : ObservableObject
                 3 => CsvExport.DuplicatesAsync(Duplicates, dlg.FileName),
                 4 => CsvExport.SuspectsAsync(Suspects.Select(s => (s.File, s.AvText)), dlg.FileName),
                 5 => CsvExport.ErrorsAsync(r.Errors, dlg.FileName),
+                6 => CsvExport.StaleAsync(StaleFolders.Select(s => (s.FullPath, s.Size, s.Files, s.NewestUtc)), dlg.FileName),
                 _ => CsvExport.TreeAsync(r.Root, dlg.FileName),
             });
             StatusText = $"Exporté : {dlg.FileName}";

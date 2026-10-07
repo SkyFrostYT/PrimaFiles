@@ -27,6 +27,16 @@ public static class Elevation
             psi.ArgumentList.Add("--path");
             psi.ArgumentList.Add(path);
         }
+        // Lecteurs réseau de la session normale : invisibles en administrateur, ils y seront reconnectés
+        try
+        {
+            foreach (var (letter, unc) in Unc.GetMappedDrives())
+            {
+                psi.ArgumentList.Add("--drive-map");
+                psi.ArgumentList.Add($"{letter}={unc}");
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
         try
         {
             Process.Start(psi);

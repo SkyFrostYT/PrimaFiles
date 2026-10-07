@@ -146,6 +146,14 @@ public static class CsvExport
                 s.Entry.Size, Date(s.Entry.LastWriteUtc), Esc(av)));
     });
 
+    public static Task StaleAsync(IEnumerable<(string Path, long Size, long Files, DateTime NewestUtc)> folders, string file) => Task.Run(() =>
+    {
+        using var w = Open(file);
+        w.WriteLine(string.Join(Sep, "Chemin", "Taille (octets)", "Taille", "Fichiers", "Dernière modification"));
+        foreach (var (path, size, files, newest) in folders)
+            w.WriteLine(string.Join(Sep, Esc(path), size, Esc(Format.Bytes(size)), files, Date(newest)));
+    });
+
     public static Task ErrorsAsync(IEnumerable<ScanError> errors, string file) => Task.Run(() =>
     {
         using var w = Open(file);
