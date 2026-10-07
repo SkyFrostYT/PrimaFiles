@@ -1,53 +1,68 @@
-# PrimaFiles
+<p align="center">
+  <img src="Assets/PrimaFiles.png" width="96" alt="PrimaFiles logo">
+</p>
 
-Analyse de l'occupation d'un disque local ou d'un partage réseau (`\\serveur\partage`), en WPF/.NET 10.
-**Lecture seule** : PrimaFiles ne supprime, ne déplace et ne modifie jamais aucun fichier.
-Utilisation de Claude Code (Anthropic) comme assistant en cybersécurité pour l'aspect sécurisation.
+<h1 align="center">PrimaFiles</h1>
+
+<p align="center">
+  <b>See what fills your disks and network shares, and spot suspicious files, without changing anything.</b><br>
+  Free and open-source disk space analyzer for Windows 10/11.
+</p>
+
+<p align="center">
+  <a href="https://github.com/SkyFrostYT/PrimaFiles/releases/latest"><img src="https://img.shields.io/github/v/release/SkyFrostYT/PrimaFiles?label=download" alt="Latest release"></a>
+  <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078D4" alt="Windows 10 | 11">
+  <img src="https://img.shields.io/badge/.NET-10-512BD4" alt=".NET 10">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-green" alt="MIT license"></a>
+</p>
+
+---
+
+PrimaFiles scans a local drive, a folder or a network share (`\\server\share`) and shows where the space goes.
+It is **read-only**: it never deletes, moves or modifies a file. It sends no telemetry and makes no outbound connection.
+
+## Features
+
+- **Fast parallel scan** of drives, folders, network shares, or a whole server (`\\server` scans every share it exposes).
+- **Folder tree** sorted like Windows Explorer, or by size, file count or date, with usage bars.
+- **Volume map** (treemap, like WinDirStat): every block is proportional to its size; click to locate, double-click to zoom.
+- **Largest files**, **file types**, **duplicates** (size → partial hash → SHA-256), **inactive folders** (no activity for 1–10 years), **errors**.
+- **Suspicious file detection**: double extensions (`invoice.pdf.exe`), hidden Unicode tricks, fake Windows processes, ransomware notes, scripts in Temp / Downloads / Startup… Each hit can be checked on demand with the installed antivirus (Microsoft Defender or WithSecure / F-Secure).
+- **Administrator mode** to read protected folders (backup privilege, still read-only). Your mapped network drives stay available.
+- **Handy**: folder search (Ctrl+F), drag & drop, *Scan with PrimaFiles* in the Explorer right-click menu, CSV export for Excel, keyboard shortcuts, light / dark theme.
+- **4 languages**: English, French, Spanish, German (🌐 button, switches instantly).
+- **Privacy**: network drives show only the share name, never the server name.
 
 ## Installation
 
-1. Téléchargez **`PrimaFiles.exe`** depuis la [dernière version](https://github.com/SkyFrostYT/PrimaFiles/releases/latest)
-   (ou `PrimaFiles-portable-….zip` si le runtime .NET 10 Desktop n'est pas installé : extrayez-le, puis lancez `PrimaFiles.exe`).
-2. Lancez-le. Au premier lancement, PrimaFiles propose de **s'installer sur l'ordinateur** :
-   - **Oui** : acceptez l'invite administrateur (UAC). PrimaFiles est copié dans **`C:\Program Files\PrimaFiles`**,
-     ajouté au **menu Démarrer** et à *Paramètres > Applications installées*, puis s'ouvre depuis son emplacement installé.
-     Le fichier téléchargé peut ensuite être supprimé.
-   - **Non** : PrimaFiles s'ouvre sans être installé, et la question n'est plus posée pour ce fichier.
+1. Download **`PrimaFiles.exe`** from the [latest release](https://github.com/SkyFrostYT/PrimaFiles/releases/latest).
+   No .NET 10 Desktop runtime? Take `PrimaFiles-portable-….zip` instead, extract it and run `PrimaFiles.exe`.
+2. Run it. PrimaFiles offers to **install itself** in `C:\Program Files\PrimaFiles` (Start menu entry, listed in *Installed apps*).
+   Choose *No* to use it without installing.
 
-Pourquoi l'installer :
-
-- `C:\Program Files` n'est modifiable que par un administrateur : aucun programme ne peut glisser une DLL piégée à côté
-  de l'exécutable, ce qui reste possible dans le dossier Téléchargements ;
-- la copie installée ne porte plus la marque « téléchargé depuis Internet » : **plus d'alerte SmartScreen au lancement** ;
-- lancer une version plus récente téléchargée propose de **mettre à jour** l'installation.
-
-**Désinstallation** : *Paramètres > Applications > Applications installées > PrimaFiles > Désinstaller*. Vos réglages
-(historique, thème) sont conservés dans `%LOCALAPPDATA%\PrimaFiles`.
-
-En ligne de commande (déploiement) :
+Uninstall from *Settings > Apps > Installed apps*. Silent deployment:
 
 ```powershell
-PrimaFiles.exe --install --quiet                                        # installe sans aucune question (UAC seulement)
-& "C:\Program Files\PrimaFiles\PrimaFiles.exe" --uninstall --quiet      # désinstalle sans confirmation
+PrimaFiles.exe --install --quiet
+& "C:\Program Files\PrimaFiles\PrimaFiles.exe" --uninstall --quiet
 ```
 
-## Éviter l'alerte de Windows (« Windows a protégé votre ordinateur »)
+### "Windows protected your PC" warning
 
-PrimaFiles n'est pas signé par un certificat commercial : un fichier téléchargé déclenche l'avertissement SmartScreen
-au premier lancement. Solutions, de la plus simple à la plus complète :
-
-**1. Passer l'alerte une fois** : « Informations complémentaires » → « Exécuter quand même », puis installez PrimaFiles :
-l'alerte ne réapparaîtra plus.
-
-**2. Débloquer le fichier téléchargé** avant de le lancer (c'est la marque « provient d'Internet » qui déclenche l'alerte) :
+PrimaFiles is not signed with a commercial certificate, so SmartScreen warns on first launch of a downloaded copy.
+Click **More info → Run anyway** once, or unblock the file before running it:
 
 ```powershell
 Unblock-File -Path "$env:USERPROFILE\Downloads\PrimaFiles.exe"
 ```
 
-**3. Auto-signer le programme installé sur votre PC** : Windows affiche alors un éditeur identifié (« PrimaFiles
-(auto-signé sur ce PC) ») au lieu d'« Éditeur inconnu », et les stratégies qui n'autorisent que les programmes signés
-l'acceptent. Après l'installation, dans PowerShell **administrateur** :
+Once installed, the warning no longer appears.
+
+<details>
+<summary><b>Optional: self-sign the installed copy on your PC</b></summary>
+
+Windows then shows an identified publisher instead of "Unknown publisher", and policies that only allow signed
+programs accept it. Run in an **administrator** PowerShell after installing:
 
 ```powershell
 $exe  = "C:\Program Files\PrimaFiles\PrimaFiles.exe"
@@ -59,104 +74,47 @@ Export-Certificate -Cert $cert -FilePath $cer | Out-Null
 Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\Root | Out-Null
 Import-Certificate -FilePath $cer -CertStoreLocation Cert:\LocalMachine\TrustedPublisher | Out-Null
 Set-AuthenticodeSignature -FilePath $exe -Certificate $cert -HashAlgorithm SHA256
-Remove-Item "Cert:\LocalMachine\My\$($cert.Thumbprint)" -DeleteKey   # destruction de la clé privée
+Remove-Item "Cert:\LocalMachine\My\$($cert.Thumbprint)" -DeleteKey   # destroy the private key
 Remove-Item $cer
 ```
 
-> [!IMPORTANT]
-> - L'auto-signature n'est reconnue **que sur le PC où elle a été faite**. Pour une signature reconnue partout, il faut
->   un certificat commercial (DigiCert, Sectigo, Microsoft Artifact Signing…) ou un certificat d'entreprise déployé par GPO.
-> - La **clé privée est détruite** juste après la signature : le certificat approuvé ne peut servir à signer aucun autre
->   programme, même si le PC est compromis plus tard.
-> - Après une mise à jour de PrimaFiles, relancez ces commandes (une signature ne couvre qu'une version précise).
-> - Si **Smart App Control** est activé (Windows 11), il peut bloquer un programme auto-signé.
-> - La désinstallation de PrimaFiles retire aussi ce certificat.
+- The signature is trusted **only on this PC**.
+- The private key is destroyed right after signing, so the certificate cannot sign anything else.
+- Run it again after each update. Uninstalling PrimaFiles removes the certificate.
+- Smart App Control (Windows 11) may still block self-signed programs.
+- Keep the certificate name unchanged: the uninstaller looks for it.
 
-## Fonctionnalités
+</details>
 
-- **Interface moderne** : barre de titre personnalisée (réduire / agrandir / fermer, coins arrondis Windows 11), accueil avec les lecteurs disponibles, indicateurs mis à jour en direct pendant l'analyse.
-- **Thème clair / sombre** : bouton soleil / lune dans la barre de titre, choix mémorisé.
-- **4 langues** : français, anglais, espagnol, allemand — bouton 🌐 de la barre de titre, changement immédiat sans redémarrer, choix mémorisé (par défaut : langue de Windows). Messages, exports CSV et unités (Ko / KB) suivent la langue choisie.
-- **Carte des volumes** (bandeau du bas, comme WinDirStat / TreeSize) : chaque bloc est proportionnel à l'espace occupé. Survol : détail · clic : ligne correspondante dans l'arborescence · double-clic : zoom · clic droit : remonter.
-- **Arborescence** dans l'ordre de l'Explorateur Windows (tri naturel), ou triée par taille, nombre de fichiers ou date. Barres vert / jaune / rouge selon la part occupée ; vrai taux d'occupation du volume (quota inclus) sur la ligne racine.
-- **Repères** : logo Windows = élément système · triangle = à ne pas supprimer · œil barré = dossier inaccessible.
-- **Fichiers suspects** (bouclier rouge = suspect, orange = à vérifier) : repérés pendant l'analyse par des indices typiques des logiciels malveillants : double extension (`facture.pdf.exe`), caractères invisibles qui masquent la vraie extension, nom de processus Windows hors de Windows (faux `svchost.exe`), extensions et notes de rançongiciel, scripts / économiseurs d'écran dans Temp, Téléchargements, Corbeille, Public ou Démarrage, programmes cachés. Onglet dédié avec bandeau d'alerte, bouclier sur les dossiers qui en contiennent, et **vérification à la demande par l'antivirus installé** (WithSecure / F-Secure, ou Microsoft Defender). Ces indices ne sont pas une preuve : seul l'antivirus confirme une menace.
-- **Recherche de dossier** (Ctrl+F) : par nom, dans toute l'arborescence analysée ; Entrée / Maj+Entrée pour passer d'un résultat à l'autre.
-- **Dossiers inactifs** : dossiers sans aucune activité depuis 1, 2, 3, 5 ou 10 ans, du plus gros au plus petit — candidats à l'archivage.
-- **Maniabilité** : glisser-déposer d'un dossier sur la fenêtre, **« Analyser avec PrimaFiles »** dans le clic droit de l'Explorateur
-  (version installée ; sous Windows 11 : *Afficher plus d'options*), fenêtre **Propriétés** de Windows depuis chaque liste,
-  raccourcis clavier (liste dans ⚙ Paramètres), progression dans la barre des tâches et clignotement à la fin d'une longue analyse,
-  réglages mémorisés.
-- **Gros fichiers**, **types de fichiers**, **doublons** (taille → empreinte partielle → SHA-256), **erreurs**, **export CSV** pour Excel.
-- **Mode administrateur** : relance avec élévation (UAC) et privilège de sauvegarde en lecture seule pour lister les dossiers protégés. Les lecteurs réseau de la session normale y sont reconnectés automatiquement (connexion temporaire, identifiants Windows actuels).
-- **Serveur entier** : saisir `\\serveur` analyse tous ses partages (partages d'administration C$, ADMIN$… exclus).
-- **Confidentialité** : le nom du serveur des lecteurs réseau n'est jamais affiché, seulement le nom du partage.
+## Security
 
-## Sécurité
+- **Read-only by design**: no write, delete or move call on scanned files.
+- **Starts without admin rights**; elevation only on explicit request (UAC), and settings are never written while elevated.
+- **Hardened DLL loading** (System32 only, current folder excluded) and Explorer launched by absolute path.
+- **Trap-proof paths** (`\\?\`): names such as `virus.exe.`, `nul.txt` or `Docs ` cannot redirect a scan, hash or antivirus check to another file.
+- **Trusted locations recognized only at their real place**: a fake `Program Files` folder in Downloads protects nothing.
+- **CSV export** neutralizes formula injection; **network replies** are filtered; **cloud-only files** (OneDrive) are never downloaded.
+- No telemetry, no auto-update, no packer. SHA-256 checksums are published with every release.
 
-| Mesure | Effet |
-|---|---|
-| Lecture seule | aucune API d'écriture, de suppression ou de déplacement sur les fichiers analysés |
-| Manifeste `asInvoker` | démarre sans droits admin ; élévation uniquement sur demande explicite (UAC) |
-| `DefaultDllImportSearchPaths(System32)` | les DLL système ne sont chargées que depuis System32 (anti « DLL hijacking ») |
-| Explorateur lancé par chemin absolu | pas de détournement via le `PATH` |
-| Export CSV protégé | les noms commençant par `= + - @` sont neutralisés (pas d'injection de formules Excel) |
-| Aucune connexion réseau sortante | pas de télémétrie, pas de mise à jour automatique ; seuls les partages demandés sont lus |
-| Réglages locaux | historique et thème dans `%LOCALAPPDATA%\PrimaFiles` uniquement |
-| Publication sans auto-extraction ni compression | évite les heuristiques « packer » des antivirus |
-| Métadonnées de version complètes, build déterministe | exécutable identifiable, empreintes SHA-256 fournies |
-| Chemins `\\?\` pour toutes les lectures | un nom piégé (`virus.exe.`, `nul.txt`, dossier `Docs `) ne peut pas faire analyser, hacher ou vérifier un autre fichier |
-| Vérification antivirus robuste | nom piégé → tout le dossier est analysé ; analyseur arrêté en cas d'annulation ; seul le bilan final est lu |
-| Aucune écriture en mode administrateur | historique et thème non enregistrés : pas d'écrasement de fichier système via un lien placé dans le profil |
-| Chargement des DLL durci | dossier courant exclu, DLL de System32 prioritaires, DLL « intégrité faible » refusées |
-| Fichiers « en ligne uniquement » ignorés | doublons et signatures ne déclenchent pas le téléchargement des fichiers OneDrive / SharePoint |
-| Réponses réseau filtrées | un serveur ne peut pas faire analyser un autre chemin via un nom de partage piégé |
+The security audit and hardening were carried out with the help of **Claude Code** (Anthropic), used as a cybersecurity assistant.
 
-### Détection des fichiers suspects : renforcements 1.3
+## Build from source
 
-- Les emplacements de confiance (Windows, Program Files, AppData\Local\Programs…) ne sont reconnus qu'à leur **place réelle** : un dossier `Program Files` ou `Windows.old` recréé dans Téléchargements ne protège plus un programme malveillant.
-- Les sous-dossiers de Windows **accessibles en écriture** (`Windows\Temp`, `Tasks`, `tracing`, `spool\drivers\color`…) ne sont plus considérés comme système.
-- Le cache Internet et les **pièces jointes Outlook ouvertes** (`INetCache\Content.Outlook`) sont des emplacements à risque.
-- Nouveaux indices : nom piégé, programme marqué « fichier système » hors de Windows, raccourcis à double extension (`facture.pdf.lnk`), consoles `.msc`, compléments Excel `.xll`, aide `.chm`.
-- Un fichier suspect n'affiche plus jamais le logo Windows ni le triangle « à ne pas supprimer ».
-
-## Compiler et publier (développeurs)
+Requires the .NET 10 SDK.
 
 ```powershell
-.\Publier.ps1
+.\Publier.ps1                 # builds publish\standard, publish\portable and SHA256SUMS.txt
+dotnet build -c Release       # build only
 ```
 
-Si `Assets\PrimaFiles.ico` est absente, elle est d'abord recréée par `Generer-Icone.ps1` à partir du logo vectoriel
-(`Themes\Icons.xaml`). Pour compiler sans publier : `.\Generer-Icone.ps1` puis `dotnet build -c Release`.
-
-Produit dans `publish\` :
-
-- `standard\PrimaFiles.exe` : un seul fichier léger ; nécessite le **runtime .NET 10 Desktop** (Windows propose de l'installer s'il manque).
-- `portable\` : `PrimaFiles.exe` + quelques DLL natives WPF, fonctionne sans rien installer (copier le dossier entier).
-- `SHA256SUMS.txt` : empreintes pour vérifier l'intégrité des fichiers distribués.
-
-Avec un certificat de signature de code (commercial ou d'entreprise) : `.\Publier.ps1 -Thumbprint <empreinte>`
-(signature SHA-256 horodatée). À joindre à chaque publication GitHub : `PrimaFiles.exe`, le zip portable et `SHA256SUMS.txt`.
-
-## Structure
-
-| Dossier | Contenu |
+| Folder | Content |
 |---|---|
-| `Core/Scanner.cs` | Moteur de scan parallèle |
-| `Core/DuplicateFinder.cs` | Recherche de doublons |
-| `Core/Safety.cs` | Repérage des éléments système / à ne pas supprimer |
-| `Core/Elevation.cs` | Mode administrateur |
-| `Core/Unc.cs` | Lecteurs réseau et partages |
-| `Core/Utils.cs` | Formatage, tri naturel Windows, volumes, export CSV |
-| `UI/` | ViewModel, arborescence, carte des volumes, thèmes |
-| `Themes/` | Palettes claire / sombre, styles, logos vectoriels |
-| `Assets/` | Icône de l'application |
+| `Core/` | Scan engine, duplicates, suspicious-file rules, antivirus check, network shares, installer, translations (`Loc.cs`) |
+| `UI/` | View model, tree, treemap, inactive folders |
+| `Themes/` | Light / dark palettes, styles, vector icons |
 
-## Sécurité : audit et renforcement
+Contributions and translations are welcome: open an issue or a pull request.
 
-L'audit de sécurité de PrimaFiles (recherche des failles, tests d'attaque et corrections de la version 1.3) a été
-réalisé avec l'aide de **Claude** (Anthropic), utilisé comme assistant en cybersécurité.
-
-## Licence
+## License
 
 [MIT](LICENSE) © 2026 Primatoria
